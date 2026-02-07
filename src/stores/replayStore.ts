@@ -43,8 +43,8 @@ export const useReplayStore = create<ReplayState>((set) => ({
         timestamp,
       });
       set({ replayData: data });
-    } catch {
-      // Replay data not available
+    } catch (e) {
+      console.error("Failed to fetch replay data:", e);
     }
   },
 }));

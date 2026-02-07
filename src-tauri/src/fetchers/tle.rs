@@ -21,7 +21,7 @@ pub async fn fetch_tle(url: &str) -> Result<Vec<TlePair>, String> {
     parse_tle_text(&text)
 }
 
-fn parse_tle_text(text: &str) -> Result<Vec<TlePair>, String> {
+pub fn parse_tle_text(text: &str) -> Result<Vec<TlePair>, String> {
     let lines: Vec<&str> = text.lines().map(|l| l.trim()).filter(|l| !l.is_empty()).collect();
     let mut pairs = Vec::new();
 

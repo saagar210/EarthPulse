@@ -23,6 +23,10 @@ pub async fn get_historical_earthquakes(
     end_date: String,
     min_magnitude: f64,
 ) -> Result<HistoricalResult, String> {
+    if !min_magnitude.is_finite() || min_magnitude < 0.0 || min_magnitude > 10.0 {
+        return Err("Magnitude must be between 0 and 10".to_string());
+    }
+
     // Validate date range
     let start = chrono::NaiveDate::parse_from_str(&start_date, "%Y-%m-%d")
         .map_err(|_| "Invalid start date format (YYYY-MM-DD)".to_string())?;

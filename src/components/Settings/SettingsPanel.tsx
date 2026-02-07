@@ -33,7 +33,11 @@ export function SettingsPanel() {
   const handleSave = () => {
     const parsedLat = parseFloat(lat);
     const parsedLon = parseFloat(lon);
-    if (!isNaN(parsedLat) && !isNaN(parsedLon)) {
+    const validCoords = !isNaN(parsedLat) && !isNaN(parsedLon)
+      && parsedLat >= -90 && parsedLat <= 90
+      && parsedLon >= -180 && parsedLon <= 180;
+
+    if (validCoords) {
       store.setLocation(parsedLat, parsedLon);
     }
     store.setEarthquakeMagThreshold(magThreshold);
@@ -42,15 +46,17 @@ export function SettingsPanel() {
     store.setNotifyAurora(notifyAurora);
     store.setNotifyVolcanoes(notifyVolc);
 
-    // Persist to Rust backend
-    invoke("save_settings", {
-      settings: {
-        user_lat: parsedLat,
-        user_lon: parsedLon,
-        mag_threshold: magThreshold,
-        proximity_km: proximityRadius,
-      },
-    }).catch(() => {});
+    // Persist to Rust backend only with valid coordinates
+    if (validCoords) {
+      invoke("save_settings", {
+        settings: {
+          user_lat: parsedLat,
+          user_lon: parsedLon,
+          mag_threshold: magThreshold,
+          proximity_km: proximityRadius,
+        },
+      }).catch((e) => console.error("Failed to save settings:", e));
+    }
 
     store.toggle();
   };

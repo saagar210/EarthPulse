@@ -16,18 +16,16 @@ function formatRelative(timestamp: number): string {
 }
 
 export function ReplayBar() {
-  const {
-    isReplaying,
-    isPlaying,
-    currentTime,
-    speed,
-    startReplay,
-    stopReplay,
-    setPlaying,
-    setTime,
-    setSpeed,
-    fetchReplayData,
-  } = useReplayStore();
+  const isReplaying = useReplayStore((s) => s.isReplaying);
+  const isPlaying = useReplayStore((s) => s.isPlaying);
+  const currentTime = useReplayStore((s) => s.currentTime);
+  const speed = useReplayStore((s) => s.speed);
+  const startReplay = useReplayStore((s) => s.startReplay);
+  const stopReplay = useReplayStore((s) => s.stopReplay);
+  const setPlaying = useReplayStore((s) => s.setPlaying);
+  const setTime = useReplayStore((s) => s.setTime);
+  const setSpeed = useReplayStore((s) => s.setSpeed);
+  const fetchReplayData = useReplayStore((s) => s.fetchReplayData);
 
   const intervalRef = useRef<number | null>(null);
   const now = Date.now();

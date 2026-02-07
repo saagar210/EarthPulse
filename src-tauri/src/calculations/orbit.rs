@@ -180,19 +180,21 @@ pub fn predict_passes(
 
 fn tle_epoch_to_unix(elements: &Elements) -> f64 {
     let dt = elements.datetime;
-    let naive = chrono::NaiveDate::from_ymd_opt(
+    let Some(date) = chrono::NaiveDate::from_ymd_opt(
         dt.year() as i32,
         dt.month() as u32,
         dt.day() as u32,
-    )
-    .unwrap()
-    .and_hms_nano_opt(
+    ) else {
+        return 0.0;
+    };
+    let Some(naive) = date.and_hms_nano_opt(
         dt.hour() as u32,
         dt.minute() as u32,
         dt.second() as u32,
         dt.nanosecond(),
-    )
-    .unwrap();
+    ) else {
+        return 0.0;
+    };
 
     naive.and_utc().timestamp() as f64
 }

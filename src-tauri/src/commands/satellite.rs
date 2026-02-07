@@ -39,22 +39,7 @@ async fn get_tle_cached(
 }
 
 fn parse_cached_tle(text: &str) -> Vec<tle::TlePair> {
-    let lines: Vec<&str> = text.lines().map(|l| l.trim()).filter(|l| !l.is_empty()).collect();
-    let mut pairs = Vec::new();
-    let mut i = 0;
-    while i + 2 < lines.len() {
-        if lines[i + 1].starts_with("1 ") && lines[i + 2].starts_with("2 ") {
-            pairs.push(tle::TlePair {
-                name: lines[i].to_string(),
-                line1: lines[i + 1].to_string(),
-                line2: lines[i + 2].to_string(),
-            });
-            i += 3;
-        } else {
-            i += 1;
-        }
-    }
-    pairs
+    tle::parse_tle_text(text).unwrap_or_default()
 }
 
 pub async fn get_satellite_positions_inner(db: &Database) -> Result<SatelliteData, String> {

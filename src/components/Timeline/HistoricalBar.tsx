@@ -2,21 +2,19 @@ import { useHistoricalStore } from "../../stores/historicalStore";
 import { useReplayStore } from "../../stores/replayStore";
 
 export function HistoricalBar() {
-  const {
-    isExploring,
-    startDate,
-    endDate,
-    minMagnitude,
-    summary,
-    loading,
-    error,
-    startExploring,
-    stopExploring,
-    setStartDate,
-    setEndDate,
-    setMinMagnitude,
-    fetchHistorical,
-  } = useHistoricalStore();
+  const isExploring = useHistoricalStore((s) => s.isExploring);
+  const startDate = useHistoricalStore((s) => s.startDate);
+  const endDate = useHistoricalStore((s) => s.endDate);
+  const minMagnitude = useHistoricalStore((s) => s.minMagnitude);
+  const summary = useHistoricalStore((s) => s.summary);
+  const loading = useHistoricalStore((s) => s.loading);
+  const error = useHistoricalStore((s) => s.error);
+  const startExploring = useHistoricalStore((s) => s.startExploring);
+  const stopExploring = useHistoricalStore((s) => s.stopExploring);
+  const setStartDate = useHistoricalStore((s) => s.setStartDate);
+  const setEndDate = useHistoricalStore((s) => s.setEndDate);
+  const setMinMagnitude = useHistoricalStore((s) => s.setMinMagnitude);
+  const fetchHistorical = useHistoricalStore((s) => s.fetchHistorical);
   const isReplaying = useReplayStore((s) => s.isReplaying);
 
   if (isReplaying) return null;

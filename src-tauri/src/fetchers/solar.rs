@@ -16,7 +16,10 @@ pub async fn fetch_kp_index() -> Result<SolarData, String> {
         .map_err(|e| format!("Failed to parse Kp data: {}", e))?;
 
     // Data format: first row is header, rest are [time_tag, Kp, a_running, station_count]
-    // Get the most recent entry (last row)
+    // Need at least 2 rows (header + 1 data row)
+    if data.len() < 2 {
+        return Err("No Kp data available (only header row)".to_string());
+    }
     let latest = data.last().ok_or("No Kp data available")?;
     if latest.len() < 2 {
         return Err("Invalid Kp data format".to_string());

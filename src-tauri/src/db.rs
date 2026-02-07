@@ -231,21 +231,35 @@ impl Database {
 
     pub fn get_settings(&self) -> UserSettings {
         let conn = self.conn.lock().unwrap();
-        let get = |key: &str| -> Option<f64> {
-            conn.query_row(
-                "SELECT value FROM settings WHERE key = ?1",
-                rusqlite::params![key],
-                |row| row.get::<_, String>(0),
-            )
-            .ok()
-            .and_then(|v| v.parse().ok())
+        let mut stmt = conn
+            .prepare("SELECT key, value FROM settings WHERE key IN ('user_lat', 'user_lon', 'mag_threshold', 'proximity_km')")
+            .unwrap();
+
+        let mut settings = UserSettings {
+            user_lat: None,
+            user_lon: None,
+            mag_threshold: None,
+            proximity_km: None,
         };
-        UserSettings {
-            user_lat: get("user_lat"),
-            user_lon: get("user_lon"),
-            mag_threshold: get("mag_threshold"),
-            proximity_km: get("proximity_km"),
+
+        let rows = stmt
+            .query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })
+            .unwrap();
+
+        for row in rows.flatten() {
+            let val: Option<f64> = row.1.parse().ok();
+            match row.0.as_str() {
+                "user_lat" => settings.user_lat = val,
+                "user_lon" => settings.user_lon = val,
+                "mag_threshold" => settings.mag_threshold = val,
+                "proximity_km" => settings.proximity_km = val,
+                _ => {}
+            }
         }
+
+        settings
     }
 
     pub fn save_settings(&self, lat: f64, lon: f64, mag_threshold: f64, proximity_km: f64) {
@@ -297,6 +311,11 @@ impl Database {
         .ok();
         conn.execute(
             "DELETE FROM iss_positions WHERE fetched_at < strftime('%s', 'now') - 604800",
+            [],
+        )
+        .ok();
+        conn.execute(
+            "DELETE FROM api_cache WHERE fetched_at < strftime('%s', 'now') - 86400",
             [],
         )
         .ok();

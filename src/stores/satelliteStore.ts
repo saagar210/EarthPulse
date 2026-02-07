@@ -34,8 +34,8 @@ export const useSatelliteStore = create<SatelliteState>((set) => ({
         passes,
         nextPass,
       });
-    } catch {
-      // Satellite data not available yet
+    } catch (e) {
+      console.error("Failed to fetch satellite data:", e);
     }
   },
 

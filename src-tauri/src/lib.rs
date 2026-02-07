@@ -194,9 +194,9 @@ pub fn run() {
                                 &passes,
                             );
 
-                            // Update tray with next pass
+                            // Update tray with next ISS pass only
                             let now = chrono::Utc::now().timestamp();
-                            if let Some(next) = passes.iter().find(|p| p.start_time > now) {
+                            if let Some(next) = passes.iter().find(|p| p.satellite_id == "sat-25544" && p.start_time > now) {
                                 let mins = (next.start_time - now) / 60;
                                 let text = format!("Next ISS Pass: {}min", mins);
                                 tray::update_tray_menu(&handle, "", &text, "");

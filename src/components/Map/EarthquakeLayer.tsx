@@ -10,7 +10,7 @@ function getColor(depth: number): string {
 }
 
 function getRadius(magnitude: number): number {
-  return Math.max(3, Math.pow(2, magnitude) * 1.5);
+  return Math.min(40, Math.max(3, Math.pow(2, magnitude) * 1.5));
 }
 
 function formatTime(timestamp: number): string {

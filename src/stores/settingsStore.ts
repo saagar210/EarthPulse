@@ -9,6 +9,8 @@ interface SettingsState {
   notifyVolcanoes: boolean;
   earthquakeMagThreshold: number;
   proximityRadius: number;
+  sonificationEnabled: boolean;
+  ollamaModel: string;
   setLocation: (lat: number, lon: number) => void;
   toggle: () => void;
   setNotifyEarthquakes: (v: boolean) => void;
@@ -16,6 +18,8 @@ interface SettingsState {
   setNotifyVolcanoes: (v: boolean) => void;
   setEarthquakeMagThreshold: (v: number) => void;
   setProximityRadius: (v: number) => void;
+  toggleSonification: () => void;
+  setOllamaModel: (v: string) => void;
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
@@ -27,6 +31,8 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   notifyVolcanoes: true,
   earthquakeMagThreshold: 5.0,
   proximityRadius: 500,
+  sonificationEnabled: false,
+  ollamaModel: "llama3.2",
   setLocation: (lat, lon) => set({ userLat: lat, userLon: lon }),
   toggle: () => set((s) => ({ isOpen: !s.isOpen })),
   setNotifyEarthquakes: (v) => set({ notifyEarthquakes: v }),
@@ -34,4 +40,6 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   setNotifyVolcanoes: (v) => set({ notifyVolcanoes: v }),
   setEarthquakeMagThreshold: (v) => set({ earthquakeMagThreshold: v }),
   setProximityRadius: (v) => set({ proximityRadius: v }),
+  toggleSonification: () => set((s) => ({ sonificationEnabled: !s.sonificationEnabled })),
+  setOllamaModel: (v) => set({ ollamaModel: v }),
 }));

@@ -29,6 +29,10 @@ pub async fn fetch_kp_index() -> Result<SolarData, String> {
         .parse()
         .map_err(|e| format!("Failed to parse Kp value: {}", e))?;
 
+    if !kp.is_finite() {
+        return Err("Kp value is non-finite".to_string());
+    }
+
     Ok(SolarData {
         kp_index: kp,
         kp_timestamp: latest[0].clone(),

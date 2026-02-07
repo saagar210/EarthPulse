@@ -1,5 +1,6 @@
 use crate::models::earthquake::Earthquake;
 use crate::models::iss::IssPosition;
+use crate::models::watchlist::Watchlist;
 use rusqlite::Connection;
 use std::sync::Mutex;
 
@@ -53,6 +54,15 @@ impl Database {
                 key TEXT PRIMARY KEY,
                 value TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS watchlists (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                latitude REAL NOT NULL,
+                longitude REAL NOT NULL,
+                radius_km REAL NOT NULL,
+                created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+            );
             ",
         )
         .expect("Failed to create tables");
@@ -66,12 +76,16 @@ impl Database {
 
     pub fn store_earthquakes(&self, quakes: &[Earthquake]) {
         let conn = self.conn.lock().unwrap();
-        let mut stmt = conn
-            .prepare(
-                "INSERT OR REPLACE INTO earthquakes (id, magnitude, latitude, longitude, depth, place, time, tsunami, title, fetched_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, strftime('%s', 'now'))",
-            )
-            .unwrap();
+        let mut stmt = match conn.prepare(
+            "INSERT OR REPLACE INTO earthquakes (id, magnitude, latitude, longitude, depth, place, time, tsunami, title, fetched_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, strftime('%s', 'now'))",
+        ) {
+            Ok(s) => s,
+            Err(e) => {
+                log::error!("Failed to prepare earthquake insert: {}", e);
+                return;
+            }
+        };
 
         for q in quakes {
             stmt.execute(rusqlite::params![
@@ -155,24 +169,32 @@ impl Database {
 
     pub fn get_iss_trail(&self) -> Vec<IssPosition> {
         let conn = self.conn.lock().unwrap();
-        let mut stmt = conn
-            .prepare(
-                "SELECT latitude, longitude, timestamp FROM iss_positions
-                 WHERE fetched_at > strftime('%s', 'now') - 1800
-                 ORDER BY id ASC",
-            )
-            .unwrap();
+        let mut stmt = match conn.prepare(
+            "SELECT latitude, longitude, timestamp FROM iss_positions
+             WHERE fetched_at > strftime('%s', 'now') - 1800
+             ORDER BY id ASC",
+        ) {
+            Ok(s) => s,
+            Err(e) => {
+                log::error!("Failed to prepare ISS trail query: {}", e);
+                return Vec::new();
+            }
+        };
 
-        stmt.query_map([], |row| {
+        let result = match stmt.query_map([], |row| {
             Ok(IssPosition {
                 latitude: row.get(0)?,
                 longitude: row.get(1)?,
                 timestamp: row.get(2)?,
             })
-        })
-        .unwrap()
-        .filter_map(|r| r.ok())
-        .collect()
+        }) {
+            Ok(rows) => rows.filter_map(|r| r.ok()).collect(),
+            Err(e) => {
+                log::error!("Failed to query ISS trail: {}", e);
+                Vec::new()
+            }
+        };
+        result
     }
 
     // -- Replay methods --
@@ -181,16 +203,20 @@ impl Database {
         let conn = self.conn.lock().unwrap();
         // Get earthquakes that were active at the given timestamp
         // (time <= timestamp AND time + 24h > timestamp)
-        let mut stmt = conn
-            .prepare(
-                "SELECT id, magnitude, latitude, longitude, depth, place, time, tsunami, title
-                 FROM earthquakes
-                 WHERE time <= ?1 AND time > ?1 - 86400000
-                 ORDER BY time DESC",
-            )
-            .unwrap();
+        let mut stmt = match conn.prepare(
+            "SELECT id, magnitude, latitude, longitude, depth, place, time, tsunami, title
+             FROM earthquakes
+             WHERE time <= ?1 AND time > ?1 - 86400000
+             ORDER BY time DESC",
+        ) {
+            Ok(s) => s,
+            Err(e) => {
+                log::error!("Failed to prepare replay query: {}", e);
+                return Vec::new();
+            }
+        };
 
-        stmt.query_map(rusqlite::params![timestamp_ms], |row| {
+        let result = match stmt.query_map(rusqlite::params![timestamp_ms], |row| {
             Ok(Earthquake {
                 id: row.get(0)?,
                 magnitude: row.get(1)?,
@@ -202,10 +228,14 @@ impl Database {
                 tsunami: row.get::<_, i32>(7)? == 1,
                 title: row.get(8)?,
             })
-        })
-        .unwrap()
-        .filter_map(|r| r.ok())
-        .collect()
+        }) {
+            Ok(rows) => rows.filter_map(|r| r.ok()).collect(),
+            Err(e) => {
+                log::error!("Failed to query replay data: {}", e);
+                Vec::new()
+            }
+        };
+        result
     }
 
     pub fn get_iss_position_at(&self, timestamp_ms: i64) -> Option<IssPosition> {
@@ -231,9 +261,20 @@ impl Database {
 
     pub fn get_settings(&self) -> UserSettings {
         let conn = self.conn.lock().unwrap();
-        let mut stmt = conn
-            .prepare("SELECT key, value FROM settings WHERE key IN ('user_lat', 'user_lon', 'mag_threshold', 'proximity_km')")
-            .unwrap();
+        let mut stmt = match conn.prepare(
+            "SELECT key, value FROM settings WHERE key IN ('user_lat', 'user_lon', 'mag_threshold', 'proximity_km')",
+        ) {
+            Ok(s) => s,
+            Err(e) => {
+                log::error!("Failed to prepare settings query: {}", e);
+                return UserSettings {
+                    user_lat: None,
+                    user_lon: None,
+                    mag_threshold: None,
+                    proximity_km: None,
+                };
+            }
+        };
 
         let mut settings = UserSettings {
             user_lat: None,
@@ -242,11 +283,15 @@ impl Database {
             proximity_km: None,
         };
 
-        let rows = stmt
-            .query_map([], |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-            })
-            .unwrap();
+        let rows = match stmt.query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        }) {
+            Ok(r) => r,
+            Err(e) => {
+                log::error!("Failed to query settings: {}", e);
+                return settings;
+            }
+        };
 
         for row in rows.flatten() {
             let val: Option<f64> = row.1.parse().ok();
@@ -298,6 +343,73 @@ impl Database {
             rusqlite::params![endpoint, response],
         )
         .ok();
+    }
+
+    // -- Watchlist methods --
+
+    pub fn get_watchlists(&self) -> Vec<Watchlist> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = match conn.prepare(
+            "SELECT id, name, latitude, longitude, radius_km, created_at FROM watchlists ORDER BY created_at DESC",
+        ) {
+            Ok(s) => s,
+            Err(e) => {
+                log::error!("Failed to prepare watchlists query: {}", e);
+                return Vec::new();
+            }
+        };
+
+        let result = match stmt.query_map([], |row| {
+            Ok(Watchlist {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                latitude: row.get(2)?,
+                longitude: row.get(3)?,
+                radius_km: row.get(4)?,
+                created_at: row.get(5)?,
+            })
+        }) {
+            Ok(rows) => rows.filter_map(|r| r.ok()).collect(),
+            Err(e) => {
+                log::error!("Failed to query watchlists: {}", e);
+                Vec::new()
+            }
+        };
+        result
+    }
+
+    pub fn add_watchlist(
+        &self,
+        name: &str,
+        latitude: f64,
+        longitude: f64,
+        radius_km: f64,
+    ) -> Result<Watchlist, rusqlite::Error> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "INSERT INTO watchlists (name, latitude, longitude, radius_km) VALUES (?1, ?2, ?3, ?4)",
+            rusqlite::params![name, latitude, longitude, radius_km],
+        )?;
+        let id = conn.last_insert_rowid();
+        let created_at: i64 = conn.query_row(
+            "SELECT created_at FROM watchlists WHERE id = ?1",
+            rusqlite::params![id],
+            |row| row.get(0),
+        )?;
+        Ok(Watchlist {
+            id,
+            name: name.to_string(),
+            latitude,
+            longitude,
+            radius_km,
+            created_at,
+        })
+    }
+
+    pub fn remove_watchlist(&self, id: i64) -> Result<(), rusqlite::Error> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute("DELETE FROM watchlists WHERE id = ?1", rusqlite::params![id])?;
+        Ok(())
     }
 
     // -- Cleanup --

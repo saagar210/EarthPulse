@@ -18,8 +18,8 @@ export const useIssStore = create<IssState>((set) => ({
     try {
       const data = await invoke<IssData>("get_iss_position");
       set({ position: data.current, trail: data.trail });
-    } catch {
-      // ISS data not yet available
+    } catch (e) {
+      console.error("Failed to fetch ISS data:", e);
     }
   },
 

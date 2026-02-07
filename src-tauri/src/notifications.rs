@@ -1,5 +1,8 @@
+use crate::db::Database;
+use crate::models::asteroid::Asteroid;
 use crate::models::earthquake::Earthquake;
 use crate::models::satellite::PassPrediction;
+use crate::models::solar_event::SolarActivity;
 use std::collections::HashSet;
 use std::sync::Mutex;
 use tauri::AppHandle;
@@ -7,6 +10,9 @@ use tauri_plugin_notification::NotificationExt;
 
 pub struct NotificationTracker {
     notified_quake_ids: Mutex<HashSet<String>>,
+    notified_asteroid_ids: Mutex<HashSet<String>>,
+    notified_flare_ids: Mutex<HashSet<String>>,
+    notified_cme_cycle: Mutex<bool>,
     last_kp_notified: Mutex<Option<f64>>,
     last_pass_notified: Mutex<Option<i64>>,
 }
@@ -15,6 +21,9 @@ impl NotificationTracker {
     pub fn new() -> Self {
         Self {
             notified_quake_ids: Mutex::new(HashSet::new()),
+            notified_asteroid_ids: Mutex::new(HashSet::new()),
+            notified_flare_ids: Mutex::new(HashSet::new()),
+            notified_cme_cycle: Mutex::new(false),
             last_kp_notified: Mutex::new(None),
             last_pass_notified: Mutex::new(None),
         }
@@ -135,6 +144,155 @@ pub fn check_pass_notification(
             .ok();
 
         *last_notified = Some(pass.start_time);
+    }
+}
+
+pub fn check_asteroid_notification(
+    app: &AppHandle,
+    tracker: &NotificationTracker,
+    asteroids: &[Asteroid],
+) {
+    let mut notified = tracker.notified_asteroid_ids.lock().unwrap();
+    let now_ms = chrono::Utc::now().timestamp_millis();
+
+    // Prune IDs for asteroids no longer in the dataset
+    let current_ids: HashSet<String> = asteroids.iter().map(|a| a.id.clone()).collect();
+    notified.retain(|id| current_ids.contains(id));
+
+    for asteroid in asteroids {
+        if asteroid.is_hazardous && asteroid.miss_distance_lunar < 20.0 {
+            // Only notify for approaches within next 48 hours
+            if asteroid.approach_time > now_ms
+                && asteroid.approach_time - now_ms < 172_800_000
+                && !notified.contains(&asteroid.id)
+            {
+                app.notification()
+                    .builder()
+                    .title(&format!(
+                        "Hazardous Asteroid: {}",
+                        asteroid.name.replace(['(', ')'], "")
+                    ))
+                    .body(&format!(
+                        "Close approach at {:.1} lunar distances ({:.0} km)",
+                        asteroid.miss_distance_lunar, asteroid.miss_distance_km
+                    ))
+                    .show()
+                    .ok();
+
+                notified.insert(asteroid.id.clone());
+            }
+        }
+    }
+}
+
+pub fn check_solar_flare_notification(
+    app: &AppHandle,
+    tracker: &NotificationTracker,
+    activity: &SolarActivity,
+) {
+    let mut notified_flares = tracker.notified_flare_ids.lock().unwrap();
+
+    // Prune IDs for flares no longer in the dataset
+    let current_flare_ids: HashSet<String> = activity.flares.iter().map(|f| f.id.clone()).collect();
+    notified_flares.retain(|id| current_flare_ids.contains(id));
+
+    // Notify on M-class or X-class flares
+    for flare in &activity.flares {
+        if (flare.class_type.starts_with('X') || flare.class_type.starts_with('M'))
+            && !notified_flares.contains(&flare.id)
+        {
+            let peak_display = &flare.peak_time[..16.min(flare.peak_time.len())];
+            app.notification()
+                .builder()
+                .title(&format!("Solar Flare: {}", flare.class_type))
+                .body(&format!(
+                    "Peak time: {}{}",
+                    peak_display,
+                    flare
+                        .source_location
+                        .as_ref()
+                        .map(|s| format!(" at {}", s))
+                        .unwrap_or_default()
+                ))
+                .show()
+                .ok();
+
+            notified_flares.insert(flare.id.clone());
+            break; // Only one notification per update cycle
+        }
+    }
+    drop(notified_flares);
+
+    // Notify on earth-directed CMEs (once per batch)
+    let earth_cmes: Vec<_> = activity.cmes.iter().filter(|c| c.is_earth_directed).collect();
+    let mut cme_notified = tracker.notified_cme_cycle.lock().unwrap();
+    if !earth_cmes.is_empty() && !*cme_notified {
+        let speed_text = earth_cmes
+            .first()
+            .and_then(|c| c.speed_kps)
+            .map(|s| format!(" at {:.0} km/s", s))
+            .unwrap_or_default();
+        app.notification()
+            .builder()
+            .title("Earth-Directed CME Detected")
+            .body(&format!(
+                "{} CME(s) headed toward Earth{}",
+                earth_cmes.len(),
+                speed_text
+            ))
+            .show()
+            .ok();
+        *cme_notified = true;
+    } else if earth_cmes.is_empty() {
+        *cme_notified = false;
+    }
+}
+
+pub fn check_watchlist_notifications(
+    app: &AppHandle,
+    tracker: &NotificationTracker,
+    quakes: &[Earthquake],
+    db: &Database,
+) {
+    let now = chrono::Utc::now().timestamp_millis();
+    let mut notified = tracker.notified_quake_ids.lock().unwrap();
+    let watchlists = db.get_watchlists();
+
+    if watchlists.is_empty() {
+        return;
+    }
+
+    for quake in quakes {
+        // Only check quakes from the last 5 minutes
+        if now - quake.time > 5 * 60 * 1000 {
+            continue;
+        }
+
+        let watchlist_key = format!("wl:{}", quake.id);
+        if notified.contains(&watchlist_key) {
+            continue;
+        }
+
+        for wl in &watchlists {
+            let distance = haversine_km(wl.latitude, wl.longitude, quake.latitude, quake.longitude);
+            if distance <= wl.radius_km {
+                app.notification()
+                    .builder()
+                    .title(&format!(
+                        "M{:.1} in watchlist \"{}\"",
+                        quake.magnitude, wl.name
+                    ))
+                    .body(&format!(
+                        "{} ({:.0}km from center)",
+                        quake.place, distance
+                    ))
+                    .show()
+                    .ok();
+
+                notified.insert(watchlist_key.clone());
+                break; // One notification per quake
+            }
+        }
     }
 }
 

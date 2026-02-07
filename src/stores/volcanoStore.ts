@@ -16,8 +16,8 @@ export const useVolcanoStore = create<VolcanoState>((set) => ({
     try {
       const volcanoes = await invoke<Volcano[]>("get_volcanoes");
       set({ volcanoes });
-    } catch {
-      // Volcano data not yet available
+    } catch (e) {
+      console.error("Failed to fetch volcano data:", e);
     }
   },
 

@@ -1,8 +1,16 @@
-mod http;
+pub(crate) mod http;
+pub mod air_quality;
+pub mod asteroid;
 pub mod earthquake;
+pub mod eonet;
 pub mod gdacs;
 pub mod historical;
 pub mod iss;
+pub mod meteor;
+pub mod plate;
 pub mod solar;
+pub mod solar_event;
+pub mod sst;
 pub mod tle;
 pub mod volcano;
+pub mod weather;

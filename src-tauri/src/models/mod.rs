@@ -1,6 +1,15 @@
+pub mod air_quality;
+pub mod asteroid;
 pub mod earthquake;
+pub mod eonet;
 pub mod gdacs;
 pub mod iss;
+pub mod meteor;
+pub mod plate;
 pub mod satellite;
 pub mod solar;
+pub mod solar_event;
+pub mod sst;
 pub mod volcano;
+pub mod watchlist;
+pub mod weather;

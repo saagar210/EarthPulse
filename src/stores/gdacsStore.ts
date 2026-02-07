@@ -19,7 +19,8 @@ export const useGdacsStore = create<GdacsState>((set) => ({
     try {
       const alerts = await invoke<GdacsAlert[]>("get_gdacs_alerts");
       set({ alerts, loading: false });
-    } catch {
+    } catch (e) {
+      console.error("Failed to fetch GDACS alerts:", e);
       set({ loading: false });
     }
   },

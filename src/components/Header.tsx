@@ -3,6 +3,7 @@ import { useSettingsStore } from "../stores/settingsStore";
 import { useReplayStore } from "../stores/replayStore";
 import { useHistoricalStore } from "../stores/historicalStore";
 import { saveScreenshot, copyScreenshot } from "../utils/export";
+import { exportCSV, exportGeoJSON } from "../utils/dataExport";
 import { useEffect, useState, useRef } from "react";
 
 export function Header() {
@@ -47,11 +48,39 @@ export function Header() {
       })()
     : null;
 
-  const handleExportAction = async (action: "save" | "copy") => {
+  const handleExportAction = async (action: "save" | "copy" | "csv" | "geojson") => {
     setShowExport(false);
     try {
-      if (action === "save") await saveScreenshot();
-      else await copyScreenshot();
+      if (action === "save") {
+        await saveScreenshot();
+      } else if (action === "copy") {
+        await copyScreenshot();
+      } else {
+        // Get earthquake data from store
+        const { useEarthquakeStore } = await import("../stores/earthquakeStore");
+        const quakes = useEarthquakeStore.getState().earthquakes;
+        const timestamp = new Date().toISOString().slice(0, 10);
+        if (action === "csv") {
+          exportCSV(
+            quakes.map((q) => ({
+              id: q.id,
+              magnitude: q.magnitude,
+              latitude: q.latitude,
+              longitude: q.longitude,
+              depth: q.depth,
+              place: q.place,
+              time: q.time,
+              tsunami: q.tsunami,
+            })),
+            `earthpulse-earthquakes-${timestamp}.csv`,
+          );
+        } else {
+          exportGeoJSON(
+            quakes as unknown as { latitude: number; longitude: number; [key: string]: unknown }[],
+            `earthpulse-earthquakes-${timestamp}.geojson`,
+          );
+        }
+      }
     } catch (e) {
       console.error("Export failed:", e);
     }
@@ -118,6 +147,19 @@ export function Header() {
                 className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-700 transition-colors"
               >
                 Copy to Clipboard
+              </button>
+              <div className="border-t border-gray-700 my-1" />
+              <button
+                onClick={() => handleExportAction("csv")}
+                className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-700 transition-colors"
+              >
+                Export CSV
+              </button>
+              <button
+                onClick={() => handleExportAction("geojson")}
+                className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-700 transition-colors"
+              >
+                Export GeoJSON
               </button>
             </div>
           )}

@@ -69,6 +69,14 @@ pub fn run() {
                                 proximity_km,
                             );
 
+                            // Check watchlists
+                            notifications::check_watchlist_notifications(
+                                &handle,
+                                &eq_tracker,
+                                &quakes,
+                                &db,
+                            );
+
                             // Update tray with strongest quake
                             let strongest = quakes
                                 .iter()
@@ -151,6 +159,21 @@ pub fn run() {
                 handle.emit("volcanoes:update", &volcanoes).ok();
             });
 
+            // Emit meteor shower data once at startup
+            let handle = app.handle().clone();
+            tokio::spawn(async move {
+                let showers = fetchers::meteor::get_meteor_showers();
+                handle.emit("meteors:update", &showers).ok();
+            });
+
+            // Emit tectonic plate boundaries once at startup
+            let handle = app.handle().clone();
+            tokio::spawn(async move {
+                let plates = fetchers::plate::get_plate_boundaries();
+                handle.emit("plates:update", &plates).ok();
+                log::info!("Loaded {} plate boundary segments", plates.len());
+            });
+
             // Background: GDACS hazard alerts (every 15min)
             let handle = app.handle().clone();
             tokio::spawn(async move {
@@ -211,15 +234,86 @@ pub fn run() {
                 }
             });
 
-            // Handle window close → hide to tray
-            let window = app.get_webview_window("main").unwrap();
-            let window_clone = window.clone();
-            window.on_window_event(move |event| {
-                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                    api.prevent_close();
-                    window_clone.hide().ok();
+            // Background: EONET natural events (every 30 min)
+            let handle = app.handle().clone();
+            tokio::spawn(async move {
+                loop {
+                    match fetchers::eonet::fetch_eonet_events().await {
+                        Ok(events) => {
+                            let db = handle.state::<Database>();
+                            if let Ok(json) = serde_json::to_string(&events) {
+                                db.set_cached_response("eonet:events", &json);
+                            }
+                            handle.emit("eonet:update", &events).ok();
+                            log::info!("Fetched {} EONET events", events.len());
+                        }
+                        Err(e) => log::error!("EONET fetch error: {}", e),
+                    }
+                    tokio::time::sleep(Duration::from_secs(1800)).await;
                 }
             });
+
+            // Background: asteroid close approaches (every 6 hours)
+            let handle = app.handle().clone();
+            let ast_tracker = Arc::clone(&tracker);
+            tokio::spawn(async move {
+                loop {
+                    match fetchers::asteroid::fetch_asteroids().await {
+                        Ok(asteroids) => {
+                            let db = handle.state::<Database>();
+                            if let Ok(json) = serde_json::to_string(&asteroids) {
+                                db.set_cached_response("nasa:neo", &json);
+                            }
+
+                            // Check for hazardous close approaches
+                            notifications::check_asteroid_notification(&handle, &ast_tracker, &asteroids);
+
+                            handle.emit("asteroids:update", &asteroids).ok();
+                            log::info!("Fetched {} asteroids", asteroids.len());
+                        }
+                        Err(e) => log::error!("Asteroid fetch error: {}", e),
+                    }
+                    tokio::time::sleep(Duration::from_secs(21600)).await;
+                }
+            });
+
+            // Background: solar flares & CMEs (every 3 hours)
+            let handle = app.handle().clone();
+            let flare_tracker = Arc::clone(&tracker);
+            tokio::spawn(async move {
+                loop {
+                    match fetchers::solar_event::fetch_solar_activity().await {
+                        Ok(activity) => {
+                            let db = handle.state::<Database>();
+                            if let Ok(json) = serde_json::to_string(&activity) {
+                                db.set_cached_response("nasa:donki", &json);
+                            }
+
+                            notifications::check_solar_flare_notification(&handle, &flare_tracker, &activity);
+
+                            handle.emit("solar_activity:update", &activity).ok();
+                            log::info!(
+                                "Fetched {} flares, {} CMEs",
+                                activity.flares.len(),
+                                activity.cmes.len()
+                            );
+                        }
+                        Err(e) => log::error!("Solar activity fetch error: {}", e),
+                    }
+                    tokio::time::sleep(Duration::from_secs(10800)).await;
+                }
+            });
+
+            // Handle window close → hide to tray
+            if let Some(window) = app.get_webview_window("main") {
+                let window_clone = window.clone();
+                window.on_window_event(move |event| {
+                    if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                        api.prevent_close();
+                        window_clone.hide().ok();
+                    }
+                });
+            }
 
             Ok(())
         })
@@ -235,6 +329,18 @@ pub fn run() {
             commands::historical::get_historical_earthquakes,
             commands::satellite::get_satellite_positions,
             commands::satellite::get_pass_predictions,
+            commands::plate::get_plates,
+            commands::meteor::get_meteors,
+            commands::asteroid::get_asteroids,
+            commands::solar_event::get_solar_activity,
+            commands::eonet::get_eonet_events,
+            commands::weather::get_weather,
+            commands::air_quality::get_air_quality,
+            commands::sst::get_sst,
+            commands::summary::generate_summary,
+            commands::watchlist::get_watchlists,
+            commands::watchlist::add_watchlist,
+            commands::watchlist::remove_watchlist,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

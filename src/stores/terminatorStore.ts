@@ -15,8 +15,8 @@ export const useTerminatorStore = create<TerminatorState>((set) => ({
     try {
       const pts = await invoke<[number, number][]>("get_terminator");
       set({ points: pts });
-    } catch {
-      // Terminator data not yet available
+    } catch (e) {
+      console.error("Failed to fetch terminator data:", e);
     }
   },
 

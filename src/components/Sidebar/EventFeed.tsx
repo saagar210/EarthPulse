@@ -8,6 +8,8 @@ const dotColors: Record<EventType, string> = {
   volcano: "bg-orange-500",
   aurora: "bg-green-500",
   hazard: "bg-yellow-500",
+  asteroid: "bg-purple-500",
+  wildfire: "bg-orange-400",
 };
 
 function formatRelativeTime(timestamp: number): string {

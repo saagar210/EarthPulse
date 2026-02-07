@@ -28,7 +28,7 @@ export function useGdacsEvents() {
         description: `${a.severity} ${a.alert_type} - ${a.country || "Global"}`,
         latitude: a.latitude,
         longitude: a.longitude,
-        time: Date.now(),
+        time: a.pub_date ? new Date(a.pub_date).getTime() || Date.now() : Date.now(),
         zoom: 5,
       }));
 
@@ -46,7 +46,7 @@ export function useGdacsEvents() {
       description: `${a.severity} ${a.alert_type} - ${a.country || "Global"}`,
       latitude: a.latitude,
       longitude: a.longitude,
-      time: Date.now(),
+      time: a.pub_date ? new Date(a.pub_date).getTime() || Date.now() : Date.now(),
       zoom: 5,
     }));
 

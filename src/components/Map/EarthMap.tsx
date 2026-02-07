@@ -8,11 +8,29 @@ import { AuroraLayer } from "./AuroraLayer";
 import { VolcanoLayer } from "./VolcanoLayer";
 import { GdacsLayer } from "./GdacsLayer";
 import { SatelliteLayer } from "./SatelliteLayer";
+import { PlateLayer } from "./PlateLayer";
+import { MeteorLayer } from "./MeteorLayer";
+import { EonetLayer } from "./EonetLayer";
+import { WatchlistLayer } from "./WatchlistLayer";
 import { MapRef } from "./MapRef";
 import { useLayerStore } from "../Sidebar/LayerPanel";
+import { useMapStore } from "../../stores/mapStore";
 
 export function EarthMap() {
-  const layers = useLayerStore();
+  const earthquakes = useLayerStore((s) => s.earthquakes);
+  const earthquakeHeatmap = useLayerStore((s) => s.earthquakeHeatmap);
+  const iss = useLayerStore((s) => s.iss);
+  const dayNight = useLayerStore((s) => s.dayNight);
+  const aurora = useLayerStore((s) => s.aurora);
+  const volcanoes = useLayerStore((s) => s.volcanoes);
+  const hazards = useLayerStore((s) => s.hazards);
+  const satellites = useLayerStore((s) => s.satellites);
+  const plates = useLayerStore((s) => s.plates);
+  const wildfires = useLayerStore((s) => s.wildfires);
+  const meteors = useLayerStore((s) => s.meteors);
+  const watchlists = useLayerStore((s) => s.watchlists);
+  const tileUrl = useMapStore((s) => s.tileUrl);
+  const tileSubdomains = useMapStore((s) => s.tileSubdomains);
 
   return (
     <MapContainer
@@ -26,17 +44,22 @@ export function EarthMap() {
     >
       <MapRef />
       <TileLayer
-        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-        subdomains="abcd"
+        key={tileUrl}
+        url={tileUrl}
+        subdomains={tileSubdomains}
       />
-      {layers.dayNight && <DayNightLayer />}
-      {layers.aurora && <AuroraLayer />}
-      {layers.earthquakes && !layers.earthquakeHeatmap && <EarthquakeLayer />}
-      {layers.earthquakes && layers.earthquakeHeatmap && <EarthquakeHeatmapLayer />}
-      {layers.volcanoes && <VolcanoLayer />}
-      {layers.hazards && <GdacsLayer />}
-      {layers.satellites && <SatelliteLayer />}
-      {layers.iss && <ISSLayer />}
+      {dayNight && <DayNightLayer />}
+      {aurora && <AuroraLayer />}
+      {earthquakes && !earthquakeHeatmap && <EarthquakeLayer />}
+      {earthquakes && earthquakeHeatmap && <EarthquakeHeatmapLayer />}
+      {volcanoes && <VolcanoLayer />}
+      {hazards && <GdacsLayer />}
+      {wildfires && <EonetLayer />}
+      {plates && <PlateLayer />}
+      {meteors && <MeteorLayer />}
+      {satellites && <SatelliteLayer />}
+      {iss && <ISSLayer />}
+      {watchlists && <WatchlistLayer />}
     </MapContainer>
   );
 }

@@ -33,7 +33,7 @@ export function SettingsPanel() {
   const handleSave = () => {
     const parsedLat = parseFloat(lat);
     const parsedLon = parseFloat(lon);
-    const validCoords = !isNaN(parsedLat) && !isNaN(parsedLon)
+    const validCoords = Number.isFinite(parsedLat) && Number.isFinite(parsedLon)
       && parsedLat >= -90 && parsedLat <= 90
       && parsedLon >= -180 && parsedLon <= 180;
 
@@ -46,17 +46,15 @@ export function SettingsPanel() {
     store.setNotifyAurora(notifyAurora);
     store.setNotifyVolcanoes(notifyVolc);
 
-    // Persist to Rust backend only with valid coordinates
-    if (validCoords) {
-      invoke("save_settings", {
-        settings: {
-          user_lat: parsedLat,
-          user_lon: parsedLon,
-          mag_threshold: magThreshold,
-          proximity_km: proximityRadius,
-        },
-      }).catch((e) => console.error("Failed to save settings:", e));
-    }
+    // Always persist mag_threshold and proximity_km; use valid coords or fallback to store
+    invoke("save_settings", {
+      settings: {
+        user_lat: validCoords ? parsedLat : store.userLat,
+        user_lon: validCoords ? parsedLon : store.userLon,
+        mag_threshold: magThreshold,
+        proximity_km: proximityRadius,
+      },
+    }).catch((e) => console.error("Failed to save settings:", e));
 
     store.toggle();
   };
@@ -156,6 +154,24 @@ export function SettingsPanel() {
             />
             <span className="text-sm">Volcano alerts</span>
           </label>
+        </div>
+
+        <div className="border-t border-gray-800" />
+
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-gray-300">Audio</h3>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={store.sonificationEnabled}
+              onChange={() => store.toggleSonification()}
+              className="accent-purple-500"
+            />
+            <span className="text-sm">Sonification mode</span>
+          </label>
+          <p className="text-xs text-gray-500 ml-6">
+            Play tones for new earthquakes and ambient drone based on Kp index
+          </p>
         </div>
 
         <div className="flex gap-2 justify-end">

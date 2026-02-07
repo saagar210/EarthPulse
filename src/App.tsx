@@ -12,8 +12,19 @@ import { useSolarStore } from "./stores/solarStore";
 import { useVolcanoStore } from "./stores/volcanoStore";
 import { useGdacsStore } from "./stores/gdacsStore";
 import { useSatelliteStore } from "./stores/satelliteStore";
+import { usePlateStore } from "./stores/plateStore";
+import { useMeteorStore } from "./stores/meteorStore";
+import { useAsteroidStore } from "./stores/asteroidStore";
+import { useEonetStore } from "./stores/eonetStore";
+import { useSolarEventStore } from "./stores/solarEventStore";
+import { useWatchlistStore } from "./stores/watchlistStore";
 import { useEarthquakeEvents } from "./hooks/useEarthquakeEvents";
 import { useGdacsEvents } from "./hooks/useGdacsEvents";
+import { useAsteroidEvents } from "./hooks/useAsteroidEvents";
+import { useEonetEvents } from "./hooks/useEonetEvents";
+import { useSonification } from "./hooks/useSonification";
+import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
+import { ShortcutsHelp } from "./components/Sidebar/ShortcutsHelp";
 
 export default function App() {
   const fetchQuakes = useEarthquakeStore((s) => s.fetch);
@@ -30,9 +41,24 @@ export default function App() {
   const listenGdacs = useGdacsStore((s) => s.startListening);
   const fetchSatellites = useSatelliteStore((s) => s.fetch);
   const listenSatellites = useSatelliteStore((s) => s.startListening);
+  const fetchPlates = usePlateStore((s) => s.fetch);
+  const listenPlates = usePlateStore((s) => s.startListening);
+  const fetchMeteors = useMeteorStore((s) => s.fetch);
+  const listenMeteors = useMeteorStore((s) => s.startListening);
+  const fetchEonet = useEonetStore((s) => s.fetch);
+  const listenEonet = useEonetStore((s) => s.startListening);
+  const fetchAsteroids = useAsteroidStore((s) => s.fetch);
+  const listenAsteroids = useAsteroidStore((s) => s.startListening);
+  const fetchSolarActivity = useSolarEventStore((s) => s.fetch);
+  const listenSolarActivity = useSolarEventStore((s) => s.startListening);
+  const fetchWatchlists = useWatchlistStore((s) => s.fetch);
 
   useEarthquakeEvents();
   useGdacsEvents();
+  useAsteroidEvents();
+  useEonetEvents();
+  useSonification();
+  const { showHelp, setShowHelp } = useKeyboardShortcuts();
 
   useEffect(() => {
     fetchQuakes();
@@ -42,6 +68,12 @@ export default function App() {
     fetchVolcanoes();
     fetchGdacs();
     fetchSatellites();
+    fetchPlates();
+    fetchMeteors();
+    fetchEonet();
+    fetchAsteroids();
+    fetchSolarActivity();
+    fetchWatchlists();
 
     const listeners = Promise.all([
       listenQuakes(),
@@ -51,6 +83,11 @@ export default function App() {
       listenVolcanoes(),
       listenGdacs(),
       listenSatellites(),
+      listenPlates(),
+      listenMeteors(),
+      listenEonet(),
+      listenAsteroids(),
+      listenSolarActivity(),
     ]);
 
     return () => {
@@ -64,6 +101,12 @@ export default function App() {
     fetchVolcanoes, listenVolcanoes,
     fetchGdacs, listenGdacs,
     fetchSatellites, listenSatellites,
+    fetchPlates, listenPlates,
+    fetchMeteors, listenMeteors,
+    fetchEonet, listenEonet,
+    fetchAsteroids, listenAsteroids,
+    fetchSolarActivity, listenSolarActivity,
+    fetchWatchlists,
   ]);
 
   return (
@@ -78,6 +121,7 @@ export default function App() {
       <ReplayBar />
       <HistoricalBar />
       <SettingsPanel />
+      {showHelp && <ShortcutsHelp onClose={() => setShowHelp(false)} />}
     </div>
   );
 }

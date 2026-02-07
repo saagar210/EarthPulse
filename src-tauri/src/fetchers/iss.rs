@@ -26,6 +26,10 @@ pub async fn fetch_iss_position() -> Result<IssPosition, String> {
         .parse()
         .map_err(|e| format!("Invalid longitude: {}", e))?;
 
+    if !lat.is_finite() || !lon.is_finite() {
+        return Err("ISS position contains non-finite coordinates".into());
+    }
+
     Ok(IssPosition {
         latitude: lat,
         longitude: lon,

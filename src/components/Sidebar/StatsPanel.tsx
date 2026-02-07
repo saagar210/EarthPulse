@@ -4,6 +4,9 @@ import { useSolarStore } from "../../stores/solarStore";
 import { useVolcanoStore } from "../../stores/volcanoStore";
 import { useGdacsStore } from "../../stores/gdacsStore";
 import { useSatelliteStore } from "../../stores/satelliteStore";
+import { useMeteorStore } from "../../stores/meteorStore";
+import { useAsteroidStore } from "../../stores/asteroidStore";
+import { useSolarEventStore } from "../../stores/solarEventStore";
 
 export function StatsPanel() {
   const earthquakes = useEarthquakeStore((s) => s.earthquakes);
@@ -12,6 +15,10 @@ export function StatsPanel() {
   const volcanoes = useVolcanoStore((s) => s.volcanoes);
   const gdacsAlerts = useGdacsStore((s) => s.alerts);
   const nextPass = useSatelliteStore((s) => s.nextPass);
+  const showers = useMeteorStore((s) => s.showers);
+  const asteroids = useAsteroidStore((s) => s.asteroids);
+  const flares = useSolarEventStore((s) => s.flares);
+  const cmes = useSolarEventStore((s) => s.cmes);
 
   const strongest = earthquakes.reduce<{ mag: number; place: string } | null>(
     (best, eq) => {
@@ -28,6 +35,14 @@ export function StatsPanel() {
   ).length;
 
   const redAlerts = gdacsAlerts.filter((a) => a.severity === "Red").length;
+
+  const nextShower = showers
+    .filter((s) => s.days_until_peak >= 0)
+    .sort((a, b) => a.days_until_peak - b.days_until_peak)[0];
+
+  const hazardousCount = asteroids.filter((a) => a.is_hazardous).length;
+  const significantFlare = flares.find((f) => f.class_type.startsWith("X") || f.class_type.startsWith("M"));
+  const earthCmeCount = cmes.filter((c) => c.is_earth_directed).length;
 
   const nextPassLabel = nextPass
     ? (() => {
@@ -72,6 +87,29 @@ export function StatsPanel() {
       label: "Hazard Alerts",
       value: gdacsAlerts.length > 0 ? gdacsAlerts.length.toString() : "--",
       sub: redAlerts > 0 ? `${redAlerts} red` : undefined,
+    },
+    {
+      label: "NEO Flybys (7d)",
+      value: asteroids.length > 0 ? asteroids.length.toString() : "--",
+      sub: hazardousCount > 0 ? `${hazardousCount} hazardous` : undefined,
+    },
+    {
+      label: "Solar Flares (7d)",
+      value: flares.length > 0 ? flares.length.toString() : "--",
+      sub: significantFlare
+        ? `Strongest: ${significantFlare.class_type}`
+        : earthCmeCount > 0
+          ? `${earthCmeCount} CME Earth-dir`
+          : undefined,
+    },
+    {
+      label: "Next Shower",
+      value: nextShower ? nextShower.name : "--",
+      sub: nextShower
+        ? nextShower.days_until_peak === 0
+          ? "Peak today!"
+          : `in ${nextShower.days_until_peak}d`
+        : undefined,
     },
   ];
 

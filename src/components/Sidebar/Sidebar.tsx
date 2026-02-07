@@ -1,6 +1,13 @@
 import { LayerPanel } from "./LayerPanel";
 import { StatsPanel } from "./StatsPanel";
 import { EventFeed } from "./EventFeed";
+import { MeteorPanel } from "./MeteorPanel";
+import { AsteroidPanel } from "./AsteroidPanel";
+import { SolarActivityPanel } from "./SolarActivityPanel";
+import { WeatherCard } from "./WeatherCard";
+import { StatsDashboard } from "./StatsDashboard";
+import { SummaryPanel } from "./SummaryPanel";
+import { WatchlistPanel } from "./WatchlistPanel";
 
 export function Sidebar() {
   return (
@@ -8,6 +15,20 @@ export function Sidebar() {
       <LayerPanel />
       <div className="border-t border-gray-800" />
       <StatsPanel />
+      <div className="border-t border-gray-800" />
+      <MeteorPanel />
+      <div className="border-t border-gray-800" />
+      <AsteroidPanel />
+      <div className="border-t border-gray-800" />
+      <SolarActivityPanel />
+      <div className="border-t border-gray-800" />
+      <WeatherCard />
+      <div className="border-t border-gray-800" />
+      <StatsDashboard />
+      <div className="border-t border-gray-800" />
+      <SummaryPanel />
+      <div className="border-t border-gray-800" />
+      <WatchlistPanel />
       <div className="border-t border-gray-800" />
       <EventFeed />
     </aside>

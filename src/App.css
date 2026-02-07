@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+/* Leaflet dark theme overrides */
+.leaflet-container {
+  background: #0a0a0f;
+}
+
+.leaflet-popup-content-wrapper {
+  background: #1a1a2e;
+  color: #e5e5e5;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.leaflet-popup-tip {
+  background: #1a1a2e;
+}
+
+.leaflet-popup-close-button {
+  color: #888 !important;
+}
+
+/* Earthquake pulse animation */
+@keyframes earthquake-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.8);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.earthquake-pulse {
+  animation: earthquake-pulse 2s ease-in-out infinite;
+}

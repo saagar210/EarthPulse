@@ -7,6 +7,7 @@ import { useSatelliteStore } from "../../stores/satelliteStore";
 import { useMeteorStore } from "../../stores/meteorStore";
 import { useAsteroidStore } from "../../stores/asteroidStore";
 import { useSolarEventStore } from "../../stores/solarEventStore";
+import { useState, useEffect } from "react";
 
 export function StatsPanel() {
   const earthquakes = useEarthquakeStore((s) => s.earthquakes);
@@ -44,9 +45,15 @@ export function StatsPanel() {
   const significantFlare = flares.find((f) => f.class_type.startsWith("X") || f.class_type.startsWith("M"));
   const earthCmeCount = cmes.filter((c) => c.is_earth_directed).length;
 
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
   const nextPassLabel = nextPass
     ? (() => {
-        const diff = nextPass.start_time * 1000 - Date.now();
+        const diff = nextPass.start_time * 1000 - now;
         if (diff < 0) return "Now!";
         const mins = Math.floor(diff / 60000);
         const hours = Math.floor(mins / 60);

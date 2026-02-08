@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { CircleMarker, Popup } from "react-leaflet";
 import { useEarthquakeStore } from "../../stores/earthquakeStore";
 import { useReplayStore } from "../../stores/replayStore";
@@ -31,12 +32,18 @@ export function EarthquakeLayer() {
   const isExploring = useHistoricalStore((s) => s.isExploring);
   const historicalQuakes = useHistoricalStore((s) => s.earthquakes);
 
+  const [liveNow, setLiveNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setLiveNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
   const earthquakes = isExploring
     ? historicalQuakes
     : isReplaying && replayData
       ? replayData.earthquakes
       : liveQuakes;
-  const now = isReplaying ? replayTime : Date.now();
+  const now = isReplaying ? replayTime : liveNow;
 
   return (
     <>

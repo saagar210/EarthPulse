@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLayerStore } from "../components/Sidebar/LayerPanel";
+import { useLayerStore } from "../stores/layerStore";
 import { useReplayStore } from "../stores/replayStore";
 import { useHistoricalStore } from "../stores/historicalStore";
 import { useSettingsStore } from "../stores/settingsStore";
@@ -81,8 +81,9 @@ export function useKeyboardShortcuts(): {
           );
           break;
         case "Escape":
-          useSettingsStore.getState().isOpen &&
+          if (useSettingsStore.getState().isOpen) {
             useSettingsStore.getState().toggle();
+          }
           setShowHelp(false);
           break;
         case "?":

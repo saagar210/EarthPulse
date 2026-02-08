@@ -13,7 +13,7 @@ import { MeteorLayer } from "./MeteorLayer";
 import { EonetLayer } from "./EonetLayer";
 import { WatchlistLayer } from "./WatchlistLayer";
 import { MapRef } from "./MapRef";
-import { useLayerStore } from "../Sidebar/LayerPanel";
+import { useLayerStore } from "../../stores/layerStore";
 import { useMapStore } from "../../stores/mapStore";
 
 export function EarthMap() {

@@ -15,16 +15,20 @@ export function Header() {
   const isExploring = useHistoricalStore((s) => s.isExploring);
   const [elapsed, setElapsed] = useState<string>("--");
   const [showExport, setShowExport] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
   const exportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!lastUpdate) return;
-    const interval = setInterval(() => {
-      const seconds = Math.floor((Date.now() - lastUpdate) / 1000);
-      if (seconds < 60) setElapsed(`${seconds}s ago`);
-      else setElapsed(`${Math.floor(seconds / 60)}m ago`);
+    const id = setInterval(() => {
+      const t = Date.now();
+      setNow(t);
+      if (lastUpdate) {
+        const seconds = Math.floor((t - lastUpdate) / 1000);
+        if (seconds < 60) setElapsed(`${seconds}s ago`);
+        else setElapsed(`${Math.floor(seconds / 60)}m ago`);
+      }
     }, 1000);
-    return () => clearInterval(interval);
+    return () => clearInterval(id);
   }, [lastUpdate]);
 
   // Close dropdown on outside click
@@ -41,7 +45,7 @@ export function Header() {
 
   const replayLabel = isReplaying
     ? (() => {
-        const diff = Date.now() - replayTime;
+        const diff = now - replayTime;
         const hours = Math.floor(diff / 3600000);
         if (hours > 0) return `Replaying: ${hours}h ago`;
         return `Replaying: ${Math.floor(diff / 60000)}m ago`;

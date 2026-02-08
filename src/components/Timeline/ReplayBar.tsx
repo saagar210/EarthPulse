@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useReplayStore } from "../../stores/replayStore";
 import { useHistoricalStore } from "../../stores/historicalStore";
 
@@ -28,7 +28,11 @@ export function ReplayBar() {
   const fetchReplayData = useReplayStore((s) => s.fetchReplayData);
 
   const intervalRef = useRef<number | null>(null);
-  const now = Date.now();
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
   const min = now - 24 * 60 * 60 * 1000;
 
   // Playback loop

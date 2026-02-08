@@ -44,7 +44,7 @@ pub fn run() {
             // Background: earthquake polling (every 60s)
             let handle = app.handle().clone();
             let eq_tracker = Arc::clone(&tracker);
-            tokio::spawn(async move {
+            tauri::async_runtime::spawn(async move {
                 loop {
                     match fetchers::earthquake::fetch_earthquakes().await {
                         Ok(quakes) => {
@@ -96,7 +96,7 @@ pub fn run() {
 
             // Background: ISS position polling (every 5s)
             let handle = app.handle().clone();
-            tokio::spawn(async move {
+            tauri::async_runtime::spawn(async move {
                 loop {
                     match fetchers::iss::fetch_iss_position().await {
                         Ok(pos) => {
@@ -117,7 +117,7 @@ pub fn run() {
 
             // Background: terminator update (every 60s)
             let handle = app.handle().clone();
-            tokio::spawn(async move {
+            tauri::async_runtime::spawn(async move {
                 loop {
                     let points = calculations::terminator::calculate_terminator();
                     handle.emit("terminator:update", &points).ok();
@@ -128,7 +128,7 @@ pub fn run() {
             // Background: solar data polling (every 15min)
             let handle = app.handle().clone();
             let kp_tracker = Arc::clone(&tracker);
-            tokio::spawn(async move {
+            tauri::async_runtime::spawn(async move {
                 loop {
                     match fetchers::solar::fetch_kp_index().await {
                         Ok(data) => {
@@ -154,21 +154,21 @@ pub fn run() {
 
             // Emit volcano data once at startup
             let handle = app.handle().clone();
-            tokio::spawn(async move {
+            tauri::async_runtime::spawn(async move {
                 let volcanoes = fetchers::volcano::get_active_volcanoes();
                 handle.emit("volcanoes:update", &volcanoes).ok();
             });
 
             // Emit meteor shower data once at startup
             let handle = app.handle().clone();
-            tokio::spawn(async move {
+            tauri::async_runtime::spawn(async move {
                 let showers = fetchers::meteor::get_meteor_showers();
                 handle.emit("meteors:update", &showers).ok();
             });
 
             // Emit tectonic plate boundaries once at startup
             let handle = app.handle().clone();
-            tokio::spawn(async move {
+            tauri::async_runtime::spawn(async move {
                 let plates = fetchers::plate::get_plate_boundaries();
                 handle.emit("plates:update", &plates).ok();
                 log::info!("Loaded {} plate boundary segments", plates.len());
@@ -176,7 +176,7 @@ pub fn run() {
 
             // Background: GDACS hazard alerts (every 15min)
             let handle = app.handle().clone();
-            tokio::spawn(async move {
+            tauri::async_runtime::spawn(async move {
                 loop {
                     match fetchers::gdacs::fetch_gdacs_alerts().await {
                         Ok(alerts) => {
@@ -196,7 +196,7 @@ pub fn run() {
             // Background: satellite positions + pass predictions (every 5min)
             let handle = app.handle().clone();
             let sat_tracker = Arc::clone(&tracker);
-            tokio::spawn(async move {
+            tauri::async_runtime::spawn(async move {
                 loop {
                     let db = handle.state::<Database>();
 
@@ -236,7 +236,7 @@ pub fn run() {
 
             // Background: EONET natural events (every 30 min)
             let handle = app.handle().clone();
-            tokio::spawn(async move {
+            tauri::async_runtime::spawn(async move {
                 loop {
                     match fetchers::eonet::fetch_eonet_events().await {
                         Ok(events) => {
@@ -256,7 +256,7 @@ pub fn run() {
             // Background: asteroid close approaches (every 6 hours)
             let handle = app.handle().clone();
             let ast_tracker = Arc::clone(&tracker);
-            tokio::spawn(async move {
+            tauri::async_runtime::spawn(async move {
                 loop {
                     match fetchers::asteroid::fetch_asteroids().await {
                         Ok(asteroids) => {
@@ -280,7 +280,7 @@ pub fn run() {
             // Background: solar flares & CMEs (every 3 hours)
             let handle = app.handle().clone();
             let flare_tracker = Arc::clone(&tracker);
-            tokio::spawn(async move {
+            tauri::async_runtime::spawn(async move {
                 loop {
                     match fetchers::solar_event::fetch_solar_activity().await {
                         Ok(activity) => {

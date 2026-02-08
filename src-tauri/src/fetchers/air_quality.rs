@@ -33,7 +33,11 @@ pub async fn fetch_air_quality(lat: f64, lon: f64) -> Result<AirQuality, String>
         .await
         .map_err(|e| format!("Failed to parse AQ data: {}", e))?;
 
-    let aqi = data.current.us_aqi.unwrap_or(0.0) as u32;
+    let aqi = data
+        .current
+        .us_aqi
+        .filter(|v| v.is_finite())
+        .ok_or("Missing or invalid US AQI value in response")? as u32;
     let (category, color) = aqi_category(aqi);
 
     Ok(AirQuality {

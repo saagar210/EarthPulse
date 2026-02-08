@@ -50,12 +50,21 @@ impl Earthquake {
             return None;
         }
 
+        let mag = feature.properties.mag.unwrap_or(0.0);
+        let lon = coords[0];
+        let lat = coords[1];
+        let depth = coords[2];
+
+        if !mag.is_finite() || !lon.is_finite() || !lat.is_finite() || !depth.is_finite() {
+            return None;
+        }
+
         Some(Earthquake {
             id: feature.id.clone(),
-            magnitude: feature.properties.mag.unwrap_or(0.0),
-            longitude: coords[0],
-            latitude: coords[1],
-            depth: coords[2],
+            magnitude: mag,
+            longitude: lon,
+            latitude: lat,
+            depth,
             place: feature
                 .properties
                 .place

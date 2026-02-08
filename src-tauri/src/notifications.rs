@@ -317,6 +317,7 @@ fn haversine_km(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
     let dlon = (lon2 - lon1).to_radians();
     let a = (dlat / 2.0).sin().powi(2)
         + lat1.to_radians().cos() * lat2.to_radians().cos() * (dlon / 2.0).sin().powi(2);
+    let a = a.clamp(0.0, 1.0); // Guard against floating-point drift past [0,1]
     let c = 2.0 * a.sqrt().asin();
     r * c
 }

@@ -91,7 +91,9 @@ export default function App() {
     ]);
 
     return () => {
-      listeners.then((fns) => fns.forEach((fn) => fn()));
+      listeners
+        .then((fns) => fns.forEach((fn) => fn()))
+        .catch((e) => console.error("Failed to clean up listeners:", e));
     };
   }, [
     fetchQuakes, listenQuakes,

@@ -102,8 +102,14 @@ fn parse_gdacs_rss(xml: &str) -> Result<Vec<GdacsAlert>, String> {
                     in_item = false;
 
                     if let (Some(latitude), Some(longitude)) = (lat, lon) {
+                        if !latitude.is_finite() || !longitude.is_finite() {
+                            buf.clear();
+                            continue;
+                        }
                         let id = if event_id.is_empty() {
-                            format!("gdacs-{}-{:.4}-{:.4}", event_type, latitude, longitude)
+                            // Use lat/lon + pub_date for uniqueness when event_id is missing
+                            let date_slug: String = pub_date.chars().filter(|c| c.is_alphanumeric()).collect();
+                            format!("gdacs-{}-{:.4}-{:.4}-{}", event_type, latitude, longitude, date_slug)
                         } else {
                             format!("gdacs-{}-{}", event_type, event_id)
                         };

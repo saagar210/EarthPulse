@@ -1,6 +1,7 @@
 import { Marker, Polyline, Tooltip } from "react-leaflet";
 import L from "leaflet";
 import { useSatelliteStore } from "../../stores/satelliteStore";
+import { splitAtAntimeridian } from "../../utils/geo";
 
 const satIcons: Record<string, L.DivIcon> = {};
 
@@ -33,21 +34,7 @@ export function SatelliteLayer() {
   return (
     <>
       {orbits.map((orbit, idx) => {
-        // Split at antimeridian
-        const segments: [number, number][][] = [];
-        let current: [number, number][] = [];
-        for (let i = 0; i < orbit.points.length; i++) {
-          if (
-            i > 0 &&
-            Math.abs(orbit.points[i][1] - orbit.points[i - 1][1]) > 180
-          ) {
-            if (current.length > 0) segments.push(current);
-            current = [];
-          }
-          current.push(orbit.points[i]);
-        }
-        if (current.length > 0) segments.push(current);
-
+        const segments = splitAtAntimeridian(orbit.points);
         const color = orbitColors[idx % orbitColors.length];
 
         return segments.map((seg, si) => (

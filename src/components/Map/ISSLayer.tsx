@@ -1,6 +1,7 @@
 import { Marker, Polyline, Tooltip } from "react-leaflet";
 import { useIssStore } from "../../stores/issStore";
 import { useReplayStore } from "../../stores/replayStore";
+import { splitAtAntimeridian } from "../../utils/geo";
 import L from "leaflet";
 
 const issIcon = L.divIcon({
@@ -28,17 +29,7 @@ export function ISSLayer() {
     (p) => [p.latitude, p.longitude] as [number, number],
   );
 
-  // Split trail at antimeridian crossings to avoid wraparound lines
-  const segments: [number, number][][] = [];
-  let current: [number, number][] = [];
-  for (let i = 0; i < trailCoords.length; i++) {
-    if (i > 0 && Math.abs(trailCoords[i][1] - trailCoords[i - 1][1]) > 180) {
-      if (current.length > 0) segments.push(current);
-      current = [];
-    }
-    current.push(trailCoords[i]);
-  }
-  if (current.length > 0) segments.push(current);
+  const segments = splitAtAntimeridian(trailCoords);
 
   return (
     <>

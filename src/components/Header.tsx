@@ -56,8 +56,6 @@ export function Header() {
       } else if (action === "copy") {
         await copyScreenshot();
       } else {
-        // Get earthquake data from store
-        const { useEarthquakeStore } = await import("../stores/earthquakeStore");
         const quakes = useEarthquakeStore.getState().earthquakes;
         const timestamp = new Date().toISOString().slice(0, 10);
         if (action === "csv") {

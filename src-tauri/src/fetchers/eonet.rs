@@ -34,13 +34,19 @@ pub async fn fetch_eonet_events() -> Result<Vec<NaturalEvent>, String> {
                 return None;
             }
 
+            let lon = geom.coordinates[0];
+            let lat = geom.coordinates[1];
+            if !lon.is_finite() || !lat.is_finite() {
+                return None;
+            }
+
             Some(NaturalEvent {
                 id: event.id,
                 title: event.title,
                 category: category.title.clone(),
                 category_id: category.id.clone(),
-                longitude: geom.coordinates[0],
-                latitude: geom.coordinates[1],
+                longitude: lon,
+                latitude: lat,
                 date: geom.date.clone(),
             })
         })

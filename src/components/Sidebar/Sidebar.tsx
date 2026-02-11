@@ -8,6 +8,7 @@ import { WeatherCard } from "./WeatherCard";
 import { StatsDashboard } from "./StatsDashboard";
 import { SummaryPanel } from "./SummaryPanel";
 import { WatchlistPanel } from "./WatchlistPanel";
+import { SourceHealthPanel } from "./SourceHealthPanel";
 
 export function Sidebar() {
   return (
@@ -29,6 +30,8 @@ export function Sidebar() {
       <SummaryPanel />
       <div className="border-t border-gray-800" />
       <WatchlistPanel />
+      <div className="border-t border-gray-800" />
+      <SourceHealthPanel />
       <div className="border-t border-gray-800" />
       <EventFeed />
     </aside>

@@ -13,6 +13,29 @@ use std::sync::Arc;
 use std::time::Duration;
 use tauri::{Emitter, Manager};
 
+#[derive(serde::Serialize)]
+struct SourceHealthEvent {
+    source: &'static str,
+    ok: bool,
+    timestamp_ms: i64,
+    error: Option<String>,
+}
+
+fn emit_source_health(
+    handle: &tauri::AppHandle,
+    source: &'static str,
+    ok: bool,
+    error: Option<String>,
+) {
+    let payload = SourceHealthEvent {
+        source,
+        ok,
+        timestamp_ms: chrono::Utc::now().timestamp_millis(),
+        error,
+    };
+    handle.emit("source:health", payload).ok();
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -59,15 +82,17 @@ pub fn run() {
                             let mag_threshold = settings.mag_threshold.unwrap_or(5.0);
                             let proximity_km = settings.proximity_km.unwrap_or(500.0);
 
-                            notifications::check_earthquake_notifications(
-                                &handle,
-                                &eq_tracker,
-                                &quakes,
-                                mag_threshold,
-                                user_lat,
-                                user_lon,
-                                proximity_km,
-                            );
+                            if settings.notify_earthquakes.unwrap_or(true) {
+                                notifications::check_earthquake_notifications(
+                                    &handle,
+                                    &eq_tracker,
+                                    &quakes,
+                                    mag_threshold,
+                                    user_lat,
+                                    user_lon,
+                                    proximity_km,
+                                );
+                            }
 
                             // Check watchlists
                             notifications::check_watchlist_notifications(
@@ -78,17 +103,24 @@ pub fn run() {
                             );
 
                             // Update tray with strongest quake
-                            let strongest = quakes
-                                .iter()
-                                .max_by(|a, b| a.magnitude.partial_cmp(&b.magnitude).unwrap_or(std::cmp::Ordering::Equal));
+                            let strongest = quakes.iter().max_by(|a, b| {
+                                a.magnitude
+                                    .partial_cmp(&b.magnitude)
+                                    .unwrap_or(std::cmp::Ordering::Equal)
+                            });
                             if let Some(eq) = strongest {
-                                let text = format!("Recent Earthquake: M{:.1} {}", eq.magnitude, eq.place);
+                                let text =
+                                    format!("Recent Earthquake: M{:.1} {}", eq.magnitude, eq.place);
                                 tray::update_tray_menu(&handle, &text, "", "");
                             }
 
+                            emit_source_health(&handle, "earthquakes", true, None);
                             log::info!("Fetched {} earthquakes", quakes.len());
                         }
-                        Err(e) => log::error!("Earthquake fetch error: {}", e),
+                        Err(e) => {
+                            emit_source_health(&handle, "earthquakes", false, Some(e.clone()));
+                            log::error!("Earthquake fetch error: {}", e)
+                        }
                     }
                     tokio::time::sleep(Duration::from_secs(60)).await;
                 }
@@ -108,8 +140,12 @@ pub fn run() {
                                 trail,
                             };
                             handle.emit("iss:update", &data).ok();
+                            emit_source_health(&handle, "iss", true, None);
                         }
-                        Err(e) => log::error!("ISS fetch error: {}", e),
+                        Err(e) => {
+                            emit_source_health(&handle, "iss", false, Some(e.clone()));
+                            log::error!("ISS fetch error: {}", e)
+                        }
                     }
                     tokio::time::sleep(Duration::from_secs(5)).await;
                 }
@@ -121,6 +157,7 @@ pub fn run() {
                 loop {
                     let points = calculations::terminator::calculate_terminator();
                     handle.emit("terminator:update", &points).ok();
+                    emit_source_health(&handle, "terminator", true, None);
                     tokio::time::sleep(Duration::from_secs(60)).await;
                 }
             });
@@ -132,11 +169,14 @@ pub fn run() {
                 loop {
                     match fetchers::solar::fetch_kp_index().await {
                         Ok(data) => {
-                            notifications::check_kp_notification(
-                                &handle,
-                                &kp_tracker,
-                                data.kp_index,
-                            );
+                            let settings = handle.state::<Database>().get_settings();
+                            if settings.notify_aurora.unwrap_or(true) {
+                                notifications::check_kp_notification(
+                                    &handle,
+                                    &kp_tracker,
+                                    data.kp_index,
+                                );
+                            }
                             tray::update_tray_menu(
                                 &handle,
                                 "",
@@ -144,9 +184,13 @@ pub fn run() {
                                 &format!("Kp Index: {:.1}", data.kp_index),
                             );
                             handle.emit("solar:update", &data).ok();
+                            emit_source_health(&handle, "solar", true, None);
                             log::info!("Fetched Kp index: {}", data.kp_index);
                         }
-                        Err(e) => log::error!("Solar fetch error: {}", e),
+                        Err(e) => {
+                            emit_source_health(&handle, "solar", false, Some(e.clone()));
+                            log::error!("Solar fetch error: {}", e)
+                        }
                     }
                     tokio::time::sleep(Duration::from_secs(900)).await;
                 }
@@ -157,6 +201,7 @@ pub fn run() {
             tauri::async_runtime::spawn(async move {
                 let volcanoes = fetchers::volcano::get_active_volcanoes();
                 handle.emit("volcanoes:update", &volcanoes).ok();
+                emit_source_health(&handle, "volcanoes", true, None);
             });
 
             // Emit meteor shower data once at startup
@@ -164,6 +209,7 @@ pub fn run() {
             tauri::async_runtime::spawn(async move {
                 let showers = fetchers::meteor::get_meteor_showers();
                 handle.emit("meteors:update", &showers).ok();
+                emit_source_health(&handle, "meteors", true, None);
             });
 
             // Emit tectonic plate boundaries once at startup
@@ -171,6 +217,7 @@ pub fn run() {
             tauri::async_runtime::spawn(async move {
                 let plates = fetchers::plate::get_plate_boundaries();
                 handle.emit("plates:update", &plates).ok();
+                emit_source_health(&handle, "plates", true, None);
                 log::info!("Loaded {} plate boundary segments", plates.len());
             });
 
@@ -185,9 +232,13 @@ pub fn run() {
                                 db.set_cached_response("gdacs:rss", &json);
                             }
                             handle.emit("gdacs:update", &alerts).ok();
+                            emit_source_health(&handle, "gdacs", true, None);
                             log::info!("Fetched {} GDACS alerts", alerts.len());
                         }
-                        Err(e) => log::error!("GDACS fetch error: {}", e),
+                        Err(e) => {
+                            emit_source_health(&handle, "gdacs", false, Some(e.clone()));
+                            log::error!("GDACS fetch error: {}", e)
+                        }
                     }
                     tokio::time::sleep(Duration::from_secs(900)).await;
                 }
@@ -204,30 +255,37 @@ pub fn run() {
                     match commands::satellite::get_satellite_positions_inner(&db).await {
                         Ok(data) => {
                             handle.emit("satellites:update", &data).ok();
+                            emit_source_health(&handle, "satellites", true, None);
                         }
-                        Err(e) => log::error!("Satellite fetch error: {}", e),
+                        Err(e) => {
+                            emit_source_health(&handle, "satellites", false, Some(e.clone()));
+                            log::error!("Satellite fetch error: {}", e)
+                        }
                     }
 
                     // Calculate pass predictions
                     match commands::satellite::get_pass_predictions_inner(&db).await {
                         Ok(passes) => {
-                            notifications::check_pass_notification(
-                                &handle,
-                                &sat_tracker,
-                                &passes,
-                            );
+                            notifications::check_pass_notification(&handle, &sat_tracker, &passes);
 
                             // Update tray with next ISS pass only
                             let now = chrono::Utc::now().timestamp();
-                            if let Some(next) = passes.iter().find(|p| p.satellite_id == "sat-25544" && p.start_time > now) {
+                            if let Some(next) = passes
+                                .iter()
+                                .find(|p| p.satellite_id == "sat-25544" && p.start_time > now)
+                            {
                                 let mins = (next.start_time - now) / 60;
                                 let text = format!("Next ISS Pass: {}min", mins);
                                 tray::update_tray_menu(&handle, "", &text, "");
                             }
 
                             handle.emit("passes:update", &passes).ok();
+                            emit_source_health(&handle, "passes", true, None);
                         }
-                        Err(e) => log::error!("Pass prediction error: {}", e),
+                        Err(e) => {
+                            emit_source_health(&handle, "passes", false, Some(e.clone()));
+                            log::error!("Pass prediction error: {}", e)
+                        }
                     }
 
                     tokio::time::sleep(Duration::from_secs(300)).await;
@@ -245,9 +303,13 @@ pub fn run() {
                                 db.set_cached_response("eonet:events", &json);
                             }
                             handle.emit("eonet:update", &events).ok();
+                            emit_source_health(&handle, "eonet", true, None);
                             log::info!("Fetched {} EONET events", events.len());
                         }
-                        Err(e) => log::error!("EONET fetch error: {}", e),
+                        Err(e) => {
+                            emit_source_health(&handle, "eonet", false, Some(e.clone()));
+                            log::error!("EONET fetch error: {}", e)
+                        }
                     }
                     tokio::time::sleep(Duration::from_secs(1800)).await;
                 }
@@ -266,12 +328,20 @@ pub fn run() {
                             }
 
                             // Check for hazardous close approaches
-                            notifications::check_asteroid_notification(&handle, &ast_tracker, &asteroids);
+                            notifications::check_asteroid_notification(
+                                &handle,
+                                &ast_tracker,
+                                &asteroids,
+                            );
 
                             handle.emit("asteroids:update", &asteroids).ok();
+                            emit_source_health(&handle, "asteroids", true, None);
                             log::info!("Fetched {} asteroids", asteroids.len());
                         }
-                        Err(e) => log::error!("Asteroid fetch error: {}", e),
+                        Err(e) => {
+                            emit_source_health(&handle, "asteroids", false, Some(e.clone()));
+                            log::error!("Asteroid fetch error: {}", e)
+                        }
                     }
                     tokio::time::sleep(Duration::from_secs(21600)).await;
                 }
@@ -289,16 +359,24 @@ pub fn run() {
                                 db.set_cached_response("nasa:donki", &json);
                             }
 
-                            notifications::check_solar_flare_notification(&handle, &flare_tracker, &activity);
+                            notifications::check_solar_flare_notification(
+                                &handle,
+                                &flare_tracker,
+                                &activity,
+                            );
 
                             handle.emit("solar_activity:update", &activity).ok();
+                            emit_source_health(&handle, "solar_activity", true, None);
                             log::info!(
                                 "Fetched {} flares, {} CMEs",
                                 activity.flares.len(),
                                 activity.cmes.len()
                             );
                         }
-                        Err(e) => log::error!("Solar activity fetch error: {}", e),
+                        Err(e) => {
+                            emit_source_health(&handle, "solar_activity", false, Some(e.clone()));
+                            log::error!("Solar activity fetch error: {}", e)
+                        }
                     }
                     tokio::time::sleep(Duration::from_secs(10800)).await;
                 }
@@ -324,6 +402,7 @@ pub fn run() {
             commands::solar::get_solar_data,
             commands::volcano::get_volcanoes,
             commands::replay::get_historical_data,
+            commands::settings::get_settings,
             commands::settings::save_settings,
             commands::gdacs::get_gdacs_alerts,
             commands::historical::get_historical_earthquakes,

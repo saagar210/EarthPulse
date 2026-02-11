@@ -1,5 +1,17 @@
 import { create } from "zustand";
 
+export interface PersistedSettings {
+  user_lat?: number;
+  user_lon?: number;
+  mag_threshold?: number;
+  proximity_km?: number;
+  notify_earthquakes?: boolean;
+  notify_aurora?: boolean;
+  notify_volcanoes?: boolean;
+  sonification_enabled?: boolean;
+  ollama_model?: string;
+}
+
 interface SettingsState {
   userLat: number;
   userLon: number;
@@ -18,8 +30,10 @@ interface SettingsState {
   setNotifyVolcanoes: (v: boolean) => void;
   setEarthquakeMagThreshold: (v: number) => void;
   setProximityRadius: (v: number) => void;
+  setSonificationEnabled: (v: boolean) => void;
   toggleSonification: () => void;
   setOllamaModel: (v: string) => void;
+  hydrate: (settings: PersistedSettings) => void;
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
@@ -40,6 +54,19 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   setNotifyVolcanoes: (v) => set({ notifyVolcanoes: v }),
   setEarthquakeMagThreshold: (v) => set({ earthquakeMagThreshold: v }),
   setProximityRadius: (v) => set({ proximityRadius: v }),
+  setSonificationEnabled: (v) => set({ sonificationEnabled: v }),
   toggleSonification: () => set((s) => ({ sonificationEnabled: !s.sonificationEnabled })),
   setOllamaModel: (v) => set({ ollamaModel: v }),
+  hydrate: (settings) =>
+    set((state) => ({
+      userLat: settings.user_lat ?? state.userLat,
+      userLon: settings.user_lon ?? state.userLon,
+      earthquakeMagThreshold: settings.mag_threshold ?? state.earthquakeMagThreshold,
+      proximityRadius: settings.proximity_km ?? state.proximityRadius,
+      notifyEarthquakes: settings.notify_earthquakes ?? state.notifyEarthquakes,
+      notifyAurora: settings.notify_aurora ?? state.notifyAurora,
+      notifyVolcanoes: settings.notify_volcanoes ?? state.notifyVolcanoes,
+      sonificationEnabled: settings.sonification_enabled ?? state.sonificationEnabled,
+      ollamaModel: settings.ollama_model?.trim() || state.ollamaModel,
+    })),
 }));

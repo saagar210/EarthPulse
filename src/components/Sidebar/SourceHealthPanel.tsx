@@ -11,7 +11,7 @@ const sourceCadenceMs: Record<string, number> = {
   passes: 300_000,
   eonet: 1_800_000,
   asteroids: 21_600_000,
-  solar_activity: 10_800_000,
+  solar_activity: 10800000,
   volcanoes: 86_400_000,
   meteors: 86_400_000,
   plates: 86_400_000,

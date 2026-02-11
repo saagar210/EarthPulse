@@ -6,7 +6,7 @@ import {
 } from "../stores/sourceHealthStore";
 
 export function useSourceHealth() {
-  const upsertEvent = useSourceHealthStore((s) => s.upsertEvent);
+  const upsertEvent = useSourceHealthStore(function(s) { return s.upsertEvent });
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;

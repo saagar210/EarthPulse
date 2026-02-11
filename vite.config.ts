@@ -11,4 +11,15 @@ export default defineConfig({
       ignored: ["**/src-tauri/**"],
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+          if (id.includes("uplot")) return "vendor-charts";
+          return "vendor";
+        },
+      },
+    },
+  },
 });

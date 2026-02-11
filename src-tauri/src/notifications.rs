@@ -120,9 +120,9 @@ pub fn check_pass_notification(
     let mut last_notified = tracker.last_pass_notified.lock().unwrap();
 
     // Find next visible pass within 15 minutes
-    let upcoming = passes.iter().find(|p| {
-        p.is_visible && p.start_time > now && p.start_time - now <= 900
-    });
+    let upcoming = passes
+        .iter()
+        .find(|p| p.is_visible && p.start_time > now && p.start_time - now <= 900);
 
     if let Some(pass) = upcoming {
         // Don't re-notify for the same pass
@@ -224,7 +224,11 @@ pub fn check_solar_flare_notification(
     drop(notified_flares);
 
     // Notify on earth-directed CMEs (once per batch)
-    let earth_cmes: Vec<_> = activity.cmes.iter().filter(|c| c.is_earth_directed).collect();
+    let earth_cmes: Vec<_> = activity
+        .cmes
+        .iter()
+        .filter(|c| c.is_earth_directed)
+        .collect();
     let mut cme_notified = tracker.notified_cme_cycle.lock().unwrap();
     if !earth_cmes.is_empty() && !*cme_notified {
         let speed_text = earth_cmes
@@ -282,10 +286,7 @@ pub fn check_watchlist_notifications(
                         "M{:.1} in watchlist \"{}\"",
                         quake.magnitude, wl.name
                     ))
-                    .body(&format!(
-                        "{} ({:.0}km from center)",
-                        quake.place, distance
-                    ))
+                    .body(&format!("{} ({:.0}km from center)", quake.place, distance))
                     .show()
                     .ok();
 
@@ -320,4 +321,28 @@ fn haversine_km(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
     let a = a.clamp(0.0, 1.0); // Guard against floating-point drift past [0,1]
     let c = 2.0 * a.sqrt().asin();
     r * c
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{azimuth_to_cardinal, haversine_km};
+
+    #[test]
+    fn azimuth_to_cardinal_boundaries() {
+        assert_eq!(azimuth_to_cardinal(0.0), "N");
+        assert_eq!(azimuth_to_cardinal(45.0), "NE");
+        assert_eq!(azimuth_to_cardinal(90.0), "E");
+        assert_eq!(azimuth_to_cardinal(180.0), "S");
+        assert_eq!(azimuth_to_cardinal(270.0), "W");
+        assert_eq!(azimuth_to_cardinal(359.0), "N");
+    }
+
+    #[test]
+    fn haversine_is_stable() {
+        let sf_to_sf = haversine_km(37.7749, -122.4194, 37.7749, -122.4194);
+        assert!(sf_to_sf.abs() < 0.001);
+
+        let sf_to_ny = haversine_km(37.7749, -122.4194, 40.7128, -74.0060);
+        assert!(sf_to_ny > 4100.0 && sf_to_ny < 4200.0);
+    }
 }

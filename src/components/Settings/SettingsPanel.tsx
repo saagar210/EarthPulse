@@ -13,6 +13,10 @@ export function SettingsPanel() {
   const [notifyEq, setNotifyEq] = useState(true);
   const [notifyAurora, setNotifyAurora] = useState(true);
   const [notifyVolc, setNotifyVolc] = useState(true);
+  const [sonificationEnabled, setSonificationEnabled] = useState(false);
+  const [ollamaModel, setOllamaModel] = useState("llama3.2");
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Sync local state from store whenever the panel opens
   useEffect(() => {
@@ -24,18 +28,29 @@ export function SettingsPanel() {
       setNotifyEq(store.notifyEarthquakes);
       setNotifyAurora(store.notifyAurora);
       setNotifyVolc(store.notifyVolcanoes);
+      setSonificationEnabled(store.sonificationEnabled);
+      setOllamaModel(store.ollamaModel);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store.isOpen]);
 
   if (!store.isOpen) return null;
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    setSaveError(null);
     const parsedLat = parseFloat(lat);
     const parsedLon = parseFloat(lon);
+    const sanitizedModel = ollamaModel.trim();
     const validCoords = Number.isFinite(parsedLat) && Number.isFinite(parsedLon)
       && parsedLat >= -90 && parsedLat <= 90
       && parsedLon >= -180 && parsedLon <= 180;
+
+    if (!sanitizedModel) {
+      setSaveError("Ollama model is required");
+      return;
+    }
+
+    if (isSaving) return;
 
     if (validCoords) {
       store.setLocation(parsedLat, parsedLon);
@@ -45,18 +60,33 @@ export function SettingsPanel() {
     store.setNotifyEarthquakes(notifyEq);
     store.setNotifyAurora(notifyAurora);
     store.setNotifyVolcanoes(notifyVolc);
+    store.setSonificationEnabled(sonificationEnabled);
+    store.setOllamaModel(sanitizedModel);
 
-    // Always persist mag_threshold and proximity_km; use valid coords or fallback to store
-    invoke("save_settings", {
-      settings: {
-        user_lat: validCoords ? parsedLat : store.userLat,
-        user_lon: validCoords ? parsedLon : store.userLon,
-        mag_threshold: magThreshold,
-        proximity_km: proximityRadius,
-      },
-    }).catch((e) => console.error("Failed to save settings:", e));
+    // Persist all runtime settings to backend
+    setIsSaving(true);
+    try {
+      await invoke("save_settings", {
+        settings: {
+          user_lat: validCoords ? parsedLat : store.userLat,
+          user_lon: validCoords ? parsedLon : store.userLon,
+          mag_threshold: magThreshold,
+          proximity_km: proximityRadius,
+          notify_earthquakes: notifyEq,
+          notify_aurora: notifyAurora,
+          notify_volcanoes: notifyVolc,
+          sonification_enabled: sonificationEnabled,
+          ollama_model: sanitizedModel,
+        },
+      });
 
-    store.toggle();
+      store.toggle();
+    } catch (e) {
+      console.error("Failed to save settings:", e);
+      setSaveError(String(e));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -163,8 +193,8 @@ export function SettingsPanel() {
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
-              checked={store.sonificationEnabled}
-              onChange={() => store.toggleSonification()}
+              checked={sonificationEnabled}
+              onChange={(e) => setSonificationEnabled(e.target.checked)}
               className="accent-purple-500"
             />
             <span className="text-sm">Sonification mode</span>
@@ -174,18 +204,39 @@ export function SettingsPanel() {
           </p>
         </div>
 
+        <div className="border-t border-gray-800" />
+
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-gray-300">AI Summary</h3>
+          <div>
+            <label className="text-xs text-gray-400 block mb-1">Ollama model</label>
+            <input
+              type="text"
+              value={ollamaModel}
+              onChange={(e) => setOllamaModel(e.target.value)}
+              className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-sm"
+              placeholder="llama3.2"
+            />
+          </div>
+        </div>
+
         <div className="flex gap-2 justify-end">
+          {saveError && (
+            <div className="text-xs text-red-400 mr-auto self-center">{saveError}</div>
+          )}
           <button
             onClick={store.toggle}
+            disabled={isSaving}
             className="px-3 py-1.5 text-sm rounded bg-gray-800 hover:bg-gray-700"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
-            className="px-3 py-1.5 text-sm rounded bg-blue-600 hover:bg-blue-500"
+            disabled={isSaving}
+            className="px-3 py-1.5 text-sm rounded bg-blue-600 hover:bg-blue-500 disabled:opacity-60"
           >
-            Save
+            {isSaving ? "Saving..." : "Save"}
           </button>
         </div>
       </div>

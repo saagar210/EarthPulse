@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { EarthMap } from "./components/Map/EarthMap";
 import { Header } from "./components/Header";
 import { Sidebar } from "./components/Sidebar/Sidebar";
@@ -18,12 +19,14 @@ import { useAsteroidStore } from "./stores/asteroidStore";
 import { useEonetStore } from "./stores/eonetStore";
 import { useSolarEventStore } from "./stores/solarEventStore";
 import { useWatchlistStore } from "./stores/watchlistStore";
+import { useSettingsStore, type PersistedSettings } from "./stores/settingsStore";
 import { useEarthquakeEvents } from "./hooks/useEarthquakeEvents";
 import { useGdacsEvents } from "./hooks/useGdacsEvents";
 import { useAsteroidEvents } from "./hooks/useAsteroidEvents";
 import { useEonetEvents } from "./hooks/useEonetEvents";
 import { useSonification } from "./hooks/useSonification";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
+import { useSourceHealth } from "./hooks/useSourceHealth";
 import { ShortcutsHelp } from "./components/Sidebar/ShortcutsHelp";
 
 export default function App() {
@@ -52,15 +55,21 @@ export default function App() {
   const fetchSolarActivity = useSolarEventStore((s) => s.fetch);
   const listenSolarActivity = useSolarEventStore((s) => s.startListening);
   const fetchWatchlists = useWatchlistStore((s) => s.fetch);
+  const hydrateSettings = useSettingsStore((s) => s.hydrate);
 
   useEarthquakeEvents();
   useGdacsEvents();
   useAsteroidEvents();
   useEonetEvents();
   useSonification();
+  useSourceHealth();
   const { showHelp, setShowHelp } = useKeyboardShortcuts();
 
   useEffect(() => {
+    invoke<PersistedSettings>("get_settings")
+      .then((settings) => hydrateSettings(settings))
+      .catch((e) => console.error("Failed to load settings:", e));
+
     fetchQuakes();
     fetchIss();
     fetchTerminator();
@@ -109,6 +118,7 @@ export default function App() {
     fetchAsteroids, listenAsteroids,
     fetchSolarActivity, listenSolarActivity,
     fetchWatchlists,
+    hydrateSettings,
   ]);
 
   return (

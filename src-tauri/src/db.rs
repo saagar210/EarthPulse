@@ -9,6 +9,11 @@ pub struct UserSettings {
     pub user_lon: Option<f64>,
     pub mag_threshold: Option<f64>,
     pub proximity_km: Option<f64>,
+    pub notify_earthquakes: Option<bool>,
+    pub notify_aurora: Option<bool>,
+    pub notify_volcanoes: Option<bool>,
+    pub sonification_enabled: Option<bool>,
+    pub ollama_model: Option<String>,
 }
 
 pub struct Database {
@@ -262,7 +267,17 @@ impl Database {
     pub fn get_settings(&self) -> UserSettings {
         let conn = self.conn.lock().unwrap();
         let mut stmt = match conn.prepare(
-            "SELECT key, value FROM settings WHERE key IN ('user_lat', 'user_lon', 'mag_threshold', 'proximity_km')",
+            "SELECT key, value FROM settings WHERE key IN (
+                'user_lat',
+                'user_lon',
+                'mag_threshold',
+                'proximity_km',
+                'notify_earthquakes',
+                'notify_aurora',
+                'notify_volcanoes',
+                'sonification_enabled',
+                'ollama_model'
+            )",
         ) {
             Ok(s) => s,
             Err(e) => {
@@ -272,6 +287,11 @@ impl Database {
                     user_lon: None,
                     mag_threshold: None,
                     proximity_km: None,
+                    notify_earthquakes: None,
+                    notify_aurora: None,
+                    notify_volcanoes: None,
+                    sonification_enabled: None,
+                    ollama_model: None,
                 };
             }
         };
@@ -281,6 +301,11 @@ impl Database {
             user_lon: None,
             mag_threshold: None,
             proximity_km: None,
+            notify_earthquakes: None,
+            notify_aurora: None,
+            notify_volcanoes: None,
+            sonification_enabled: None,
+            ollama_model: None,
         };
 
         let rows = match stmt.query_map([], |row| {
@@ -300,6 +325,13 @@ impl Database {
                 "user_lon" => settings.user_lon = val,
                 "mag_threshold" => settings.mag_threshold = val,
                 "proximity_km" => settings.proximity_km = val,
+                "notify_earthquakes" => settings.notify_earthquakes = parse_bool_setting(&row.1),
+                "notify_aurora" => settings.notify_aurora = parse_bool_setting(&row.1),
+                "notify_volcanoes" => settings.notify_volcanoes = parse_bool_setting(&row.1),
+                "sonification_enabled" => {
+                    settings.sonification_enabled = parse_bool_setting(&row.1)
+                }
+                "ollama_model" => settings.ollama_model = Some(row.1),
                 _ => {}
             }
         }
@@ -307,13 +339,47 @@ impl Database {
         settings
     }
 
-    pub fn save_settings(&self, lat: f64, lon: f64, mag_threshold: f64, proximity_km: f64) {
+    #[allow(clippy::too_many_arguments)]
+    pub fn save_settings(
+        &self,
+        lat: f64,
+        lon: f64,
+        mag_threshold: f64,
+        proximity_km: f64,
+        notify_earthquakes: bool,
+        notify_aurora: bool,
+        notify_volcanoes: bool,
+        sonification_enabled: bool,
+        ollama_model: &str,
+    ) {
         let conn = self.conn.lock().unwrap();
         let pairs = [
             ("user_lat", lat.to_string()),
             ("user_lon", lon.to_string()),
             ("mag_threshold", mag_threshold.to_string()),
             ("proximity_km", proximity_km.to_string()),
+            (
+                "notify_earthquakes",
+                if notify_earthquakes { "true" } else { "false" }.to_string(),
+            ),
+            (
+                "notify_aurora",
+                if notify_aurora { "true" } else { "false" }.to_string(),
+            ),
+            (
+                "notify_volcanoes",
+                if notify_volcanoes { "true" } else { "false" }.to_string(),
+            ),
+            (
+                "sonification_enabled",
+                if sonification_enabled {
+                    "true"
+                } else {
+                    "false"
+                }
+                .to_string(),
+            ),
+            ("ollama_model", ollama_model.to_string()),
         ];
         for (key, value) in &pairs {
             conn.execute(
@@ -408,7 +474,10 @@ impl Database {
 
     pub fn remove_watchlist(&self, id: i64) -> Result<(), rusqlite::Error> {
         let conn = self.conn.lock().unwrap();
-        conn.execute("DELETE FROM watchlists WHERE id = ?1", rusqlite::params![id])?;
+        conn.execute(
+            "DELETE FROM watchlists WHERE id = ?1",
+            rusqlite::params![id],
+        )?;
         Ok(())
     }
 
@@ -431,5 +500,27 @@ impl Database {
             [],
         )
         .ok();
+    }
+}
+
+fn parse_bool_setting(value: &str) -> Option<bool> {
+    match value.to_ascii_lowercase().as_str() {
+        "true" | "1" | "yes" | "on" => Some(true),
+        "false" | "0" | "no" | "off" => Some(false),
+        _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_bool_setting;
+
+    #[test]
+    fn parse_bool_setting_variants() {
+        assert_eq!(parse_bool_setting("true"), Some(true));
+        assert_eq!(parse_bool_setting("1"), Some(true));
+        assert_eq!(parse_bool_setting("FALSE"), Some(false));
+        assert_eq!(parse_bool_setting("off"), Some(false));
+        assert_eq!(parse_bool_setting("maybe"), None);
     }
 }

@@ -13,7 +13,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tauri::{Emitter, Manager};
 
-#[derive(serde::Serialize)]
+#[derive(Clone, serde::Serialize)]
 struct SourceHealthEvent {
     source: &'static str,
     ok: bool,

@@ -6,6 +6,17 @@ import { useEarthquakeStore } from "../../stores/earthquakeStore";
 import { useReplayStore } from "../../stores/replayStore";
 import { useHistoricalStore } from "../../stores/historicalStore";
 
+type HeatLayerFactory = (
+  points: [number, number, number][],
+  options: {
+    radius: number;
+    blur: number;
+    maxZoom: number;
+    max: number;
+    gradient: Record<number, string>;
+  },
+) => L.Layer;
+
 export function EarthquakeHeatmapLayer() {
   const map = useMap();
   const liveQuakes = useEarthquakeStore((s) => s.earthquakes);
@@ -27,7 +38,8 @@ export function EarthquakeHeatmapLayer() {
       eq.magnitude / 10, // normalize intensity 0-1
     ]);
 
-    const heat = L.heatLayer(points, {
+    const heatLayer = (L as unknown as { heatLayer: HeatLayerFactory }).heatLayer;
+    const heat = heatLayer(points, {
       radius: 25,
       blur: 20,
       maxZoom: 10,

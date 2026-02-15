@@ -1,0 +1,17 @@
+name: Artifact Hygiene
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  check-tracked-artifacts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify No Generated Artifacts Are Tracked
+        run: bash ./scripts/check-tracked-artifacts.sh

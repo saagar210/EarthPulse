@@ -5,13 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "check:artifacts": "bash ./scripts/check-tracked-artifacts.sh",
+    "prebuild": "pnpm check:artifacts",
     "build": "tsc --noEmit -p tsconfig.app.json && vite build",
+    "clean": "rm -rf dist src-tauri/target src-tauri/gen",
+    "clean:artifacts": "pnpm clean && find . -name '.DS_Store' -type f -delete",
+    "clean:deep": "pnpm clean:artifacts && rm -rf node_modules",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.10.1",
-    "@tauri-apps/plugin-notification": "^2.3.3",
     "html2canvas": "^1.4.1",
     "leaflet": "^1.9.4",
     "leaflet.heat": "^0.2.0",

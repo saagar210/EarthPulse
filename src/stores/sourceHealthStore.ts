@@ -7,7 +7,7 @@ export interface SourceHealthEvent {
   error?: string | null;
 }
 
-export interface SourceHealthState {
+interface SourceHealthState {
   source: string;
   ok: boolean;
   lastSuccessAt: number | null;
@@ -29,7 +29,7 @@ export const useSourceHealthStore = create<StoreState>((set) => ({
       const next: SourceHealthState = {
         source: event.source,
         ok: event.ok,
-        lastSuccessAt: (Boolean(event.ok)) ? event.timestamp_ms : prev?.lastSuccessAt ?? null,
+        lastSuccessAt: event.ok ? event.timestamp_ms : prev?.lastSuccessAt ?? null,
         lastFailureAt: event.ok ? prev?.lastFailureAt ?? null : event.timestamp_ms,
         consecutiveFailures: event.ok ? 0 : (prev?.consecutiveFailures ?? 0) + 1,
         lastError: event.ok ? null : event.error ?? "Unknown error",

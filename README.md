@@ -62,6 +62,32 @@ pnpm tauri dev
 pnpm tauri build
 ```
 
+### Cleanup Generated Artifacts
+
+```bash
+pnpm clean
+```
+
+Also remove Finder metadata files if needed:
+
+```bash
+pnpm clean:artifacts
+```
+
+Deep cleanup (also removes `node_modules`):
+
+```bash
+pnpm clean:deep
+```
+
+After `clean:deep`, run `pnpm install` before starting development again.
+
+Validate no generated artifacts are Git-tracked:
+
+```bash
+pnpm check:artifacts
+```
+
 ---
 
 ## Tech Stack

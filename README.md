@@ -56,6 +56,19 @@ pnpm install
 pnpm tauri dev
 ```
 
+### Lean Dev (low-disk mode)
+
+```bash
+pnpm install
+pnpm dev:lean
+```
+
+Lean mode keeps heavy build output in temporary directories (`CARGO_TARGET_DIR` and Vite cache) and automatically removes heavy local artifacts when the process exits.
+
+Tradeoff:
+- Lower persistent disk usage
+- Slower restarts, because build caches are not reused between lean sessions
+
 ### Build
 
 ```bash
@@ -64,8 +77,10 @@ pnpm tauri build
 
 ### Cleanup Generated Artifacts
 
+Targeted cleanup (heavy build artifacts only, preserves dependencies):
+
 ```bash
-pnpm clean
+pnpm clean:heavy
 ```
 
 Also remove Finder metadata files if needed:
@@ -74,13 +89,15 @@ Also remove Finder metadata files if needed:
 pnpm clean:artifacts
 ```
 
-Deep cleanup (also removes `node_modules`):
+Full local cleanup (removes all reproducible local artifacts, including `node_modules`):
 
 ```bash
-pnpm clean:deep
+pnpm clean:full-local
 ```
 
-After `clean:deep`, run `pnpm install` before starting development again.
+`pnpm clean` is an alias for `pnpm clean:heavy`.
+
+After `pnpm clean:full-local`, run `pnpm install` before starting development again.
 
 Validate no generated artifacts are Git-tracked:
 

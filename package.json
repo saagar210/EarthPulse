@@ -5,12 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:lean": "bash ./scripts/lean-dev.sh",
     "check:artifacts": "bash ./scripts/check-tracked-artifacts.sh",
     "prebuild": "pnpm check:artifacts",
     "build": "tsc --noEmit -p tsconfig.app.json && vite build",
-    "clean": "rm -rf dist src-tauri/target src-tauri/gen",
-    "clean:artifacts": "pnpm clean && find . -name '.DS_Store' -type f -delete",
-    "clean:deep": "pnpm clean:artifacts && rm -rf node_modules",
+    "clean": "pnpm clean:heavy",
+    "clean:heavy": "bash ./scripts/clean-heavy-artifacts.sh",
+    "clean:full-local": "bash ./scripts/clean-full-local.sh",
+    "clean:artifacts": "pnpm clean:heavy && find . -name '.DS_Store' -type f -delete",
+    "clean:deep": "pnpm clean:full-local",
     "lint": "eslint .",
     "preview": "vite preview"
   },

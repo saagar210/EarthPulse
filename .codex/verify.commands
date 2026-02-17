@@ -1,7 +1,14 @@
+# codex-os-managed
+bash ./scripts/preflight-advisory.sh
+pnpm preflight:ci
+pnpm check:artifacts
 pnpm lint
 pnpm typecheck
-pnpm test:coverage
-pnpm test:integration
-pnpm test:e2e:smoke
-pnpm docs:generate
-pnpm docs:check
+pnpm version:check
+pnpm test:unit
+CARGO_TARGET_DIR=/tmp/earthpulse-cargo-target pnpm exec vite build
+CARGO_TARGET_DIR=/tmp/earthpulse-cargo-target cargo check --manifest-path src-tauri/Cargo.toml
+CARGO_TARGET_DIR=/tmp/earthpulse-cargo-target cargo test --manifest-path src-tauri/Cargo.toml
+pnpm git:guard:all
+pnpm perf:bundle
+pnpm perf:assets

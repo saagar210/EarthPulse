@@ -171,17 +171,11 @@ pub fn predict_passes(
 
 fn tle_epoch_to_unix(elements: &Elements) -> f64 {
     let dt = elements.datetime;
-    let Some(date) =
-        chrono::NaiveDate::from_ymd_opt(dt.year() as i32, dt.month() as u32, dt.day() as u32)
-    else {
+    let Some(date) = chrono::NaiveDate::from_ymd_opt(dt.year(), dt.month(), dt.day()) else {
         return 0.0;
     };
-    let Some(naive) = date.and_hms_nano_opt(
-        dt.hour() as u32,
-        dt.minute() as u32,
-        dt.second() as u32,
-        dt.nanosecond(),
-    ) else {
+    let Some(naive) = date.and_hms_nano_opt(dt.hour(), dt.minute(), dt.second(), dt.nanosecond())
+    else {
         return 0.0;
     };
 

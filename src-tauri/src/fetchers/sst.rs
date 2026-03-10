@@ -8,9 +8,7 @@ pub async fn fetch_sst(lat: f64, lon: f64) -> Result<SeaSurfaceTemp, String> {
 
     // ERDDAP uses (last) for the most recent time slice
     let url = format!(
-        "https://coastwatch.noaa.gov/erddap/griddap/noaacwBLENDEDsstDaily.json?sst[(last)][({lat}):1:({lat})][({lon}):1:({lon})]",
-        lat = lat,
-        lon = lon,
+        "https://coastwatch.noaa.gov/erddap/griddap/noaacwBLENDEDsstDaily.json?sst[(last)][({lat}):1:({lat})][({lon}):1:({lon})]"
     );
 
     let response = send_with_resilience("sst", SourceClass::OnDemand, "SST request", || {

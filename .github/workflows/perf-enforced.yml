@@ -2,7 +2,7 @@ name: perf-enforced
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, edited]
+    types: [opened, synchronize, reopened]
     branches: [main, master]
 
 jobs:

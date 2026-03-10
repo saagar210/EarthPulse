@@ -40,7 +40,7 @@ pub fn get_plate_boundaries() -> Vec<PlateBoundary> {
     let geojson: PlateGeoJson = match serde_json::from_str(PLATES_JSON) {
         Ok(g) => g,
         Err(e) => {
-            log::error!("Failed to parse plates GeoJSON: {}", e);
+            log::error!("Failed to parse plates GeoJSON: {e}");
             return vec![];
         }
     };

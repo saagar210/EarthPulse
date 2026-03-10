@@ -277,7 +277,7 @@ fn parse_weekly_report_rss(xml: &str) -> Result<Vec<Volcano>, String> {
                 }
             }
             Ok(Event::Eof) => break,
-            Err(e) => return Err(format!("Failed to parse Smithsonian volcano feed: {}", e)),
+            Err(e) => return Err(format!("Failed to parse Smithsonian volcano feed: {e}")),
             _ => {}
         }
         buf.clear();
@@ -311,8 +311,6 @@ fn infer_status(title: &str, description: &str) -> &'static str {
         "warning"
     } else if lower.contains("continuing activity") || lower.contains("ash plume") {
         "watch"
-    } else if lower.contains("decreased") || lower.contains("decline") {
-        "advisory"
     } else {
         "advisory"
     }
@@ -325,7 +323,7 @@ fn normalize_date(pub_date: &str) -> String {
 }
 
 fn infer_id(guid: &str, name: &str, date: &str) -> String {
-    if let Some(fragment) = guid.split('#').last() {
+    if let Some(fragment) = guid.split('#').next_back() {
         if !fragment.is_empty() && fragment != guid {
             return fragment.to_string();
         }
@@ -339,7 +337,7 @@ fn infer_id(guid: &str, name: &str, date: &str) -> String {
         .filter(|s| !s.is_empty())
         .collect::<Vec<_>>()
         .join("-");
-    format!("{}-{}", slug, date)
+    format!("{slug}-{date}")
 }
 
 fn summarize_description(raw: &str) -> String {

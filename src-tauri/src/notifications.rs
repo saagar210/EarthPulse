@@ -74,7 +74,7 @@ pub fn check_volcano_notifications(
 
         app.notification()
             .builder()
-            .title(&format!("Volcano {}: {}", status_label, volcano.name))
+            .title(format!("Volcano {}: {}", status_label, volcano.name))
             .body(&volcano.description)
             .show()
             .ok();
@@ -154,7 +154,7 @@ pub fn check_kp_notification(app: &AppHandle, tracker: &NotificationTracker, kp:
         if should_notify {
             app.notification()
                 .builder()
-                .title(&format!("Geomagnetic Storm - Kp {:.0}", kp))
+                .title(format!("Geomagnetic Storm - Kp {kp:.0}"))
                 .body("Aurora may be visible at lower latitudes")
                 .show()
                 .ok();
@@ -190,8 +190,8 @@ pub fn check_pass_notification(
 
         app.notification()
             .builder()
-            .title(&format!("{} Pass in {}min", pass.name, mins))
-            .body(&format!(
+            .title(format!("{} Pass in {}min", pass.name, mins))
+            .body(format!(
                 "Max elevation: {:.0}°, look {}",
                 pass.max_elevation, direction
             ))
@@ -223,11 +223,11 @@ pub fn check_asteroid_notification(
             {
                 app.notification()
                     .builder()
-                    .title(&format!(
+                    .title(format!(
                         "Hazardous Asteroid: {}",
                         asteroid.name.replace(['(', ')'], "")
                     ))
-                    .body(&format!(
+                    .body(format!(
                         "Close approach at {:.1} lunar distances ({:.0} km)",
                         asteroid.miss_distance_lunar, asteroid.miss_distance_km
                     ))
@@ -259,14 +259,14 @@ pub fn check_solar_flare_notification(
             let peak_display = &flare.peak_time[..16.min(flare.peak_time.len())];
             app.notification()
                 .builder()
-                .title(&format!("Solar Flare: {}", flare.class_type))
-                .body(&format!(
+                .title(format!("Solar Flare: {}", flare.class_type))
+                .body(format!(
                     "Peak time: {}{}",
                     peak_display,
                     flare
                         .source_location
                         .as_ref()
-                        .map(|s| format!(" at {}", s))
+                        .map(|s| format!(" at {s}"))
                         .unwrap_or_default()
                 ))
                 .show()
@@ -289,12 +289,12 @@ pub fn check_solar_flare_notification(
         let speed_text = earth_cmes
             .first()
             .and_then(|c| c.speed_kps)
-            .map(|s| format!(" at {:.0} km/s", s))
+            .map(|s| format!(" at {s:.0} km/s"))
             .unwrap_or_default();
         app.notification()
             .builder()
             .title("Earth-Directed CME Detected")
-            .body(&format!(
+            .body(format!(
                 "{} CME(s) headed toward Earth{}",
                 earth_cmes.len(),
                 speed_text
@@ -337,11 +337,11 @@ pub fn check_watchlist_notifications(
             if distance <= wl.radius_km {
                 app.notification()
                     .builder()
-                    .title(&format!(
+                    .title(format!(
                         "M{:.1} in watchlist \"{}\"",
                         quake.magnitude, wl.name
                     ))
-                    .body(&format!("{} ({:.0}km from center)", quake.place, distance))
+                    .body(format!("{} ({:.0}km from center)", quake.place, distance))
                     .show()
                     .ok();
 

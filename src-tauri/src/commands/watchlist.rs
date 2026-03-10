@@ -18,7 +18,7 @@ pub fn add_watchlist(
     if !lat.is_finite() || !lon.is_finite() || !radius_km.is_finite() {
         return Err("Invalid coordinates or radius".to_string());
     }
-    if lat < -90.0 || lat > 90.0 || lon < -180.0 || lon > 180.0 {
+    if !(-90.0..=90.0).contains(&lat) || !(-180.0..=180.0).contains(&lon) {
         return Err("Coordinates out of range".to_string());
     }
     if radius_km <= 0.0 || radius_km > 20000.0 {
@@ -28,11 +28,11 @@ pub fn add_watchlist(
         return Err("Name cannot be empty".to_string());
     }
     db.add_watchlist(&name, lat, lon, radius_km)
-        .map_err(|e| format!("Failed to add watchlist: {}", e))
+        .map_err(|e| format!("Failed to add watchlist: {e}"))
 }
 
 #[tauri::command]
 pub fn remove_watchlist(db: State<'_, Database>, id: i64) -> Result<(), String> {
     db.remove_watchlist(id)
-        .map_err(|e| format!("Failed to remove watchlist: {}", e))
+        .map_err(|e| format!("Failed to remove watchlist: {e}"))
 }

@@ -125,12 +125,9 @@ fn parse_gdacs_rss(xml: &str) -> Result<Vec<GdacsAlert>, String> {
                             // Use lat/lon + pub_date for uniqueness when event_id is missing
                             let date_slug: String =
                                 pub_date.chars().filter(|c| c.is_alphanumeric()).collect();
-                            format!(
-                                "gdacs-{}-{:.4}-{:.4}-{}",
-                                event_type, latitude, longitude, date_slug
-                            )
+                            format!("gdacs-{event_type}-{latitude:.4}-{longitude:.4}-{date_slug}")
                         } else {
-                            format!("gdacs-{}-{}", event_type, event_id)
+                            format!("gdacs-{event_type}-{event_id}")
                         };
 
                         alerts.push(GdacsAlert {
@@ -149,7 +146,7 @@ fn parse_gdacs_rss(xml: &str) -> Result<Vec<GdacsAlert>, String> {
                 }
             }
             Ok(Event::Eof) => break,
-            Err(e) => return Err(format!("XML parse error: {}", e)),
+            Err(e) => return Err(format!("XML parse error: {e}")),
             _ => {}
         }
         buf.clear();

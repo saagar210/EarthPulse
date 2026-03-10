@@ -23,7 +23,7 @@ pub async fn get_historical_earthquakes(
     end_date: String,
     min_magnitude: f64,
 ) -> Result<HistoricalResult, String> {
-    if !min_magnitude.is_finite() || min_magnitude < 0.0 || min_magnitude > 10.0 {
+    if !min_magnitude.is_finite() || !(0.0..=10.0).contains(&min_magnitude) {
         return Err("Magnitude must be between 0 and 10".to_string());
     }
 

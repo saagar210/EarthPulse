@@ -1,0 +1,163 @@
+name: release-matrix
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (vX.Y.Z or vX.Y.Z-rc.N)"
+        required: true
+        type: string
+
+concurrency:
+  group: release-matrix-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  validate-tag:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      ref: ${{ steps.meta.outputs.ref }}
+      channel: ${{ steps.validate.outputs.channel }}
+    steps:
+      - name: Resolve tag and ref
+        id: meta
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          REF="${GITHUB_REF}"
+
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            TAG="${{ inputs.tag }}"
+            REF="refs/tags/${TAG}"
+          fi
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.meta.outputs.ref }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 20
+      - name: Validate tag and release version
+        id: validate
+        run: node scripts/release/validate-tag-channel.mjs "${{ steps.meta.outputs.tag }}"
+      - name: Write summary
+        run: |
+          echo "## Release Channel" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Tag: \`${{ steps.meta.outputs.tag }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Channel: \`${{ steps.validate.outputs.channel }}\`" >> "$GITHUB_STEP_SUMMARY"
+
+  build:
+    needs: validate-tag
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, macos-14, windows-2022]
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    env:
+      CARGO_TERM_COLOR: always
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ needs.validate-tag.outputs.ref }}
+          fetch-depth: 0
+
+      - name: Install Linux system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev
+
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 10.30.3
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@efa25f7f19611383d5b0ccf2d1c8914531636bf9
+        with:
+          toolchain: "1.88.0"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Quality gates
+        env:
+          CARGO_TARGET_DIR: ${{ runner.temp }}/earthpulse-cargo-target
+        run: |
+          pnpm preflight:ci
+          pnpm version:check
+          pnpm lint
+          pnpm typecheck
+          pnpm test:unit
+          cargo test --manifest-path src-tauri/Cargo.toml
+
+      - name: Build desktop bundles
+        run: pnpm tauri build --bundles all
+
+      - name: Upload bundle artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthpulse-${{ runner.os }}-${{ needs.validate-tag.outputs.tag }}
+          path: src-tauri/target/release/bundle/**
+          if-no-files-found: error
+
+  checksums:
+    needs: [validate-tag, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      attestations: write
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist/release-artifacts
+          pattern: earthpulse-*-${{ needs.validate-tag.outputs.tag }}
+          merge-multiple: false
+
+      - name: Generate checksums
+        run: |
+          find dist/release-artifacts -type f -print0 | sort -z | xargs -0 sha256sum > dist/SHA256SUMS.txt
+          cat dist/SHA256SUMS.txt
+
+      - name: Attest checksum manifest provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/SHA256SUMS.txt
+
+      - name: Upload checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: checksums-${{ needs.validate-tag.outputs.tag }}
+          path: dist/SHA256SUMS.txt
+
+  release-summary:
+    needs: [validate-tag, checksums]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish summary
+        run: |
+          echo "## Release Pipeline Complete" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Tag: \`${{ needs.validate-tag.outputs.tag }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Channel: \`${{ needs.validate-tag.outputs.channel }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Signing/notarization: deferred (manual follow-up)" >> "$GITHUB_STEP_SUMMARY"

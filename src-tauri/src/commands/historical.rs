@@ -49,9 +49,11 @@ pub async fn get_historical_earthquakes(
 
     let earthquakes = fetch_historical_earthquakes(&start_date, &end_date, min_magnitude).await?;
 
-    let strongest = earthquakes
-        .iter()
-        .max_by(|a, b| a.magnitude.partial_cmp(&b.magnitude).unwrap_or(std::cmp::Ordering::Equal));
+    let strongest = earthquakes.iter().max_by(|a, b| {
+        a.magnitude
+            .partial_cmp(&b.magnitude)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
     let avg_depth = if earthquakes.is_empty() {
         0.0

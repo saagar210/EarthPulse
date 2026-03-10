@@ -7,7 +7,7 @@ on:
 
 jobs:
   perf-bundle:
-    if: ${{ vars.PERF_PROFILE == 'production' }}
+    if: ${{ vars.PERF_PROFILE == 'production' && vars.PERF_BUNDLE_ENFORCED == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -15,18 +15,20 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
       - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
         with:
-          version: 10.28.1
+          version: 10.30.3
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm build || pnpm build:ui
+      - run: pnpm preflight:ci
+      - run: pnpm build
       - run: pnpm perf:bundle
+      - run: node scripts/perf/assert-baseline-provenance.mjs .perf-baselines/bundle.json ci
       - run: node scripts/perf/compare-metric.mjs .perf-baselines/bundle.json .perf-results/bundle.json totalBytes 0.08
 
   perf-build:
-    if: ${{ vars.PERF_PROFILE == 'production' }}
+    if: ${{ vars.PERF_PROFILE == 'production' && vars.PERF_BUILD_ENFORCED == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -34,13 +36,15 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
       - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
         with:
-          version: 10.28.1
+          version: 10.30.3
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm preflight:ci
       - run: pnpm perf:build
+      - run: node scripts/perf/assert-baseline-provenance.mjs .perf-baselines/build-time.json ci
       - run: node scripts/perf/compare-metric.mjs .perf-baselines/build-time.json .perf-results/build-time.json buildMs 0.15
 
   perf-assets:
@@ -61,12 +65,13 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
       - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
         with:
-          version: 10.28.1
+          version: 10.30.3
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm preflight:ci
       - run: MEMORY_MAX_DELTA_MB=5 pnpm perf:memory
 
   perf-lighthouse:
@@ -78,13 +83,14 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
       - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
         with:
-          version: 10.28.1
+          version: 10.30.3
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm build || pnpm build:ui
+      - run: pnpm preflight:ci
+      - run: pnpm build
       - run: pnpm perf:lhci:prod || pnpm perf:lhci
 
   perf-api:

@@ -1,0 +1,29 @@
+{
+  "updatedAt": "2026-03-02",
+  "commands": [
+    "add_watchlist",
+    "generate_summary",
+    "get_air_quality",
+    "get_asteroids",
+    "get_eonet_events",
+    "get_earthquakes",
+    "get_gdacs_alerts",
+    "get_historical_data",
+    "get_historical_earthquakes",
+    "get_iss_position",
+    "get_meteors",
+    "get_pass_predictions",
+    "get_plates",
+    "get_satellite_positions",
+    "get_settings",
+    "get_solar_activity",
+    "get_solar_data",
+    "get_sst",
+    "get_terminator",
+    "get_volcanoes",
+    "get_watchlists",
+    "get_weather",
+    "remove_watchlist",
+    "save_settings"
+  ]
+}

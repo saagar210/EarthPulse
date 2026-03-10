@@ -23,7 +23,9 @@ pub fn calculate_terminator_at(unix_timestamp: i64) -> Vec<[f64; 2]> {
     let gmst = (280.46061837 + 360.98564736629 * days_since_j2000) % 360.0;
     // Sub-solar longitude
     let subsolar_lon = -(gmst
-        - (ecliptic_longitude.sin() * obliquity.cos()).atan2(ecliptic_longitude.cos()).to_degrees());
+        - (ecliptic_longitude.sin() * obliquity.cos())
+            .atan2(ecliptic_longitude.cos())
+            .to_degrees());
 
     let mut points: Vec<[f64; 2]> = Vec::with_capacity(363);
 
@@ -31,9 +33,7 @@ pub fn calculate_terminator_at(unix_timestamp: i64) -> Vec<[f64; 2]> {
     for i in 0..=360 {
         let lon = -180.0 + i as f64;
         let hour_angle = (lon - subsolar_lon).to_radians();
-        let lat = (-hour_angle.cos() * declination.tan())
-            .atan()
-            .to_degrees();
+        let lat = (-hour_angle.cos() * declination.tan()).atan().to_degrees();
         points.push([lat, lon]);
     }
 

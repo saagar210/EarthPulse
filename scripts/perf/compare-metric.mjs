@@ -16,6 +16,22 @@ if (typeof b !== "number" || typeof c !== "number") {
   process.exit(2);
 }
 
+if (!Number.isFinite(b) || !Number.isFinite(c)) {
+  console.error(`Metric ${metric} must be finite.`);
+  process.exit(2);
+}
+
+if (b === 0) {
+  if (c === 0) {
+    console.log(JSON.stringify({ metric, baseline: b, current: c, ratio: 0 }, null, 2));
+    process.exit(0);
+  }
+  console.error(
+    `Baseline for ${metric} is 0 while current is ${c}. Capture a non-zero baseline before enforcing deltas.`,
+  );
+  process.exit(1);
+}
+
 const ratio = (c - b) / b;
 console.log(JSON.stringify({ metric, baseline: b, current: c, ratio }, null, 2));
 

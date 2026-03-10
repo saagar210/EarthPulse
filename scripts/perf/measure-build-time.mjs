@@ -12,6 +12,7 @@ const result = spawnSync(process.execPath, [npmExecPath, "run", "build"], {
   stdio: "inherit",
 });
 const end = Date.now();
+const capturedBy = process.env.GITHUB_ACTIONS === "true" ? "ci" : "local";
 
 mkdirSync(".perf-results", { recursive: true });
 writeFileSync(
@@ -21,6 +22,8 @@ writeFileSync(
       buildMs: end - start,
       capturedAt: new Date().toISOString(),
       command: "npm_execpath run build",
+      capturedBy,
+      runner: process.env.RUNNER_NAME ?? "unknown",
     },
     null,
     2,

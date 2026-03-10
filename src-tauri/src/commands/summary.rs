@@ -8,19 +8,18 @@ struct OllamaResponse {
 }
 
 #[tauri::command]
-pub async fn generate_summary(
-    db: State<'_, Database>,
-    model: String,
-) -> Result<String, String> {
+pub async fn generate_summary(db: State<'_, Database>, model: String) -> Result<String, String> {
     // Compile stats
     let cached_quakes = db.get_cached_earthquakes();
     let quake_count = cached_quakes.as_ref().map(|q| q.len()).unwrap_or(0);
     let strongest = cached_quakes
         .as_ref()
         .and_then(|quakes| {
-            quakes
-                .iter()
-                .max_by(|a, b| a.magnitude.partial_cmp(&b.magnitude).unwrap_or(std::cmp::Ordering::Equal))
+            quakes.iter().max_by(|a, b| {
+                a.magnitude
+                    .partial_cmp(&b.magnitude)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
         })
         .map(|q| format!("M{:.1} at {}", q.magnitude, q.place));
 

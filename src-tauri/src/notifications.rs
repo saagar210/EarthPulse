@@ -3,7 +3,8 @@ use crate::models::asteroid::Asteroid;
 use crate::models::earthquake::Earthquake;
 use crate::models::satellite::PassPrediction;
 use crate::models::solar_event::SolarActivity;
-use std::collections::HashSet;
+use crate::models::volcano::Volcano;
+use std::collections::{HashMap, HashSet};
 use std::sync::Mutex;
 use tauri::AppHandle;
 use tauri_plugin_notification::NotificationExt;
@@ -12,6 +13,8 @@ pub struct NotificationTracker {
     notified_quake_ids: Mutex<HashSet<String>>,
     notified_asteroid_ids: Mutex<HashSet<String>>,
     notified_flare_ids: Mutex<HashSet<String>>,
+    notified_volcano_ids: Mutex<HashSet<String>>,
+    volcano_cooldowns: Mutex<HashMap<String, i64>>,
     notified_cme_cycle: Mutex<bool>,
     last_kp_notified: Mutex<Option<f64>>,
     last_pass_notified: Mutex<Option<i64>>,
@@ -23,10 +26,62 @@ impl NotificationTracker {
             notified_quake_ids: Mutex::new(HashSet::new()),
             notified_asteroid_ids: Mutex::new(HashSet::new()),
             notified_flare_ids: Mutex::new(HashSet::new()),
+            notified_volcano_ids: Mutex::new(HashSet::new()),
+            volcano_cooldowns: Mutex::new(HashMap::new()),
             notified_cme_cycle: Mutex::new(false),
             last_kp_notified: Mutex::new(None),
             last_pass_notified: Mutex::new(None),
         }
+    }
+}
+
+pub fn check_volcano_notifications(
+    app: &AppHandle,
+    tracker: &NotificationTracker,
+    volcanoes: &[Volcano],
+) {
+    let now_ms = chrono::Utc::now().timestamp_millis();
+    let cooldown_ms = 24 * 60 * 60 * 1000;
+
+    let mut notified = tracker.notified_volcano_ids.lock().unwrap();
+    let mut cooldowns = tracker.volcano_cooldowns.lock().unwrap();
+    let current_ids: HashSet<String> = volcanoes.iter().map(|v| v.id.clone()).collect();
+    notified.retain(|id| current_ids.contains(id));
+    cooldowns.retain(|_, ts| now_ms.saturating_sub(*ts) <= cooldown_ms);
+
+    let severe_statuses = ["warning", "watch"];
+    for volcano in volcanoes {
+        if !severe_statuses.contains(&volcano.status.as_str()) {
+            continue;
+        }
+        if notified.contains(&volcano.id) {
+            continue;
+        }
+        let cooldown_key = format!("{}:{}", volcano.name.to_lowercase(), volcano.status);
+        if cooldowns
+            .get(&cooldown_key)
+            .map(|ts| now_ms.saturating_sub(*ts) < cooldown_ms)
+            .unwrap_or(false)
+        {
+            continue;
+        }
+
+        let status_label = match volcano.status.as_str() {
+            "warning" => "Warning",
+            "watch" => "Watch",
+            other => other,
+        };
+
+        app.notification()
+            .builder()
+            .title(&format!("Volcano {}: {}", status_label, volcano.name))
+            .body(&volcano.description)
+            .show()
+            .ok();
+
+        notified.insert(volcano.id.clone());
+        cooldowns.insert(cooldown_key, now_ms);
+        break;
     }
 }
 

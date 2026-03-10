@@ -13,11 +13,8 @@ pub fn propagate_position(
     line2: &str,
     timestamp_unix: i64,
 ) -> Option<SatellitePosition> {
-    let elements = Elements::from_tle(
-        Some(name.to_string()),
-        line1.as_bytes(),
-        line2.as_bytes(),
-    ).ok()?;
+    let elements =
+        Elements::from_tle(Some(name.to_string()), line1.as_bytes(), line2.as_bytes()).ok()?;
 
     let constants = Constants::from_elements(&elements).ok()?;
 
@@ -52,11 +49,8 @@ pub fn predict_orbit_track(
     start_unix: i64,
     duration_mins: i64,
 ) -> Option<OrbitTrack> {
-    let elements = Elements::from_tle(
-        Some(name.to_string()),
-        line1.as_bytes(),
-        line2.as_bytes(),
-    ).ok()?;
+    let elements =
+        Elements::from_tle(Some(name.to_string()), line1.as_bytes(), line2.as_bytes()).ok()?;
 
     let constants = Constants::from_elements(&elements).ok()?;
     let epoch_unix = tle_epoch_to_unix(&elements);
@@ -96,14 +90,11 @@ pub fn predict_passes(
     observer_lon: f64,
     hours_ahead: i64,
 ) -> Vec<PassPrediction> {
-    let elements = match Elements::from_tle(
-        Some(name.to_string()),
-        line1.as_bytes(),
-        line2.as_bytes(),
-    ) {
-        Ok(e) => e,
-        Err(_) => return Vec::new(),
-    };
+    let elements =
+        match Elements::from_tle(Some(name.to_string()), line1.as_bytes(), line2.as_bytes()) {
+            Ok(e) => e,
+            Err(_) => return Vec::new(),
+        };
 
     let constants = match Constants::from_elements(&elements) {
         Ok(c) => c,
@@ -180,11 +171,9 @@ pub fn predict_passes(
 
 fn tle_epoch_to_unix(elements: &Elements) -> f64 {
     let dt = elements.datetime;
-    let Some(date) = chrono::NaiveDate::from_ymd_opt(
-        dt.year() as i32,
-        dt.month() as u32,
-        dt.day() as u32,
-    ) else {
+    let Some(date) =
+        chrono::NaiveDate::from_ymd_opt(dt.year() as i32, dt.month() as u32, dt.day() as u32)
+    else {
         return 0.0;
     };
     let Some(naive) = date.and_hms_nano_opt(
@@ -203,9 +192,7 @@ fn gmst_from_unix(timestamp: i64) -> f64 {
     let jd = timestamp as f64 / 86400.0 + 2440587.5;
     let t = (jd - 2451545.0) / 36525.0;
 
-    let gmst = 280.46061837
-        + 360.98564736629 * (jd - 2451545.0)
-        + 0.000387933 * t * t
+    let gmst = 280.46061837 + 360.98564736629 * (jd - 2451545.0) + 0.000387933 * t * t
         - t * t * t / 38710000.0;
 
     (gmst % 360.0) / DEG
@@ -222,18 +209,11 @@ fn eci_to_geodetic(x: f64, y: f64, z: f64, gmst: f64) -> (f64, f64, f64) {
     (lat, lon, alt)
 }
 
-fn elevation_angle(
-    obs_lat: f64,
-    obs_lon: f64,
-    sat_lat: f64,
-    sat_lon: f64,
-    sat_alt: f64,
-) -> f64 {
+fn elevation_angle(obs_lat: f64, obs_lon: f64, sat_lat: f64, sat_lon: f64, sat_alt: f64) -> f64 {
     let dlat = sat_lat - obs_lat;
     let dlon = sat_lon - obs_lon;
 
-    let a = (dlat / 2.0).sin().powi(2)
-        + obs_lat.cos() * sat_lat.cos() * (dlon / 2.0).sin().powi(2);
+    let a = (dlat / 2.0).sin().powi(2) + obs_lat.cos() * sat_lat.cos() * (dlon / 2.0).sin().powi(2);
     let c = 2.0 * a.sqrt().asin();
     let ground_dist = EARTH_RADIUS_KM * c;
 

@@ -12,7 +12,7 @@ const sourceCadenceMs: Record<string, number> = {
   eonet: 1_800_000,
   asteroids: 21_600_000,
   solar_activity: 10800000,
-  volcanoes: 86_400_000,
+  volcanoes: 21_600_000,
   meteors: 86_400_000,
   plates: 86_400_000,
 };
@@ -33,9 +33,11 @@ function sourceStatus(
   source: string,
   lastSuccessAt: number | null,
   ok: boolean,
+  degraded: boolean,
   nowMs: number,
 ): "ok" | "stale" | "error" {
   if (!ok) return "error";
+  if (degraded) return "stale";
   if (!lastSuccessAt) return "stale";
   const cadence = sourceCadenceMs[source] ?? 300_000;
   const staleThreshold = cadence * 2;
@@ -47,6 +49,24 @@ const dotClass: Record<"ok" | "stale" | "error", string> = {
   stale: "bg-yellow-500",
   error: "bg-red-500",
 };
+
+function statusMessage(
+  row: {
+    status: "ok" | "stale" | "error";
+    degraded: boolean;
+    lastError: string | null;
+    degradedSince: number | null;
+  },
+  nowMs: number,
+): string {
+  if (row.status === "stale" && row.degraded) {
+    return `${row.lastError ?? "Using fallback data"} (${ageLabel(row.degradedSince, nowMs)})`;
+  }
+  if (row.status === "stale") {
+    return row.lastError ?? "No recent successful update";
+  }
+  return row.lastError ?? "Source error";
+}
 
 export function SourceHealthPanel() {
   const bySource = useSourceHealthStore((s) => s.bySource);
@@ -63,7 +83,13 @@ export function SourceHealthPanel() {
         .sort((a, b) => a.source.localeCompare(b.source))
         .map((source) => ({
           ...source,
-          status: sourceStatus(source.source, source.lastSuccessAt, source.ok, nowMs),
+          status: sourceStatus(
+            source.source,
+            source.lastSuccessAt,
+            source.ok,
+            source.degraded,
+            nowMs,
+          ),
         })),
     [bySource, nowMs],
   );
@@ -89,9 +115,7 @@ export function SourceHealthPanel() {
 
           {row.status !== "ok" && (
             <div className="text-[10px] text-gray-500">
-              {row.status === "stale"
-                ? "No recent successful update"
-                : row.lastError ?? "Source error"}
+              {statusMessage(row, nowMs)}
             </div>
           )}
         </div>

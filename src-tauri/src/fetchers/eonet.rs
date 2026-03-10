@@ -1,19 +1,18 @@
-use super::http::HTTP_CLIENT;
+use super::http::{send_with_resilience, SourceClass, HTTP_CLIENT};
 use crate::models::eonet::{EonetResponse, NaturalEvent};
 
 const EONET_URL: &str = "https://eonet.gsfc.nasa.gov/api/v3/events?status=open&limit=50";
 
 pub async fn fetch_eonet_events() -> Result<Vec<NaturalEvent>, String> {
-    let response = HTTP_CLIENT
-        .get(EONET_URL)
-        .send()
-        .await
-        .map_err(|e| format!("Failed to fetch EONET events: {}", e))?;
+    let response = send_with_resilience("eonet", SourceClass::Bulk, "EONET events request", || {
+        HTTP_CLIENT.get(EONET_URL)
+    })
+    .await?;
 
     let eonet: EonetResponse = response
         .json()
         .await
-        .map_err(|e| format!("Failed to parse EONET data: {}", e))?;
+        .map_err(|_| "Failed to parse EONET data".to_string())?;
 
     let events: Vec<NaturalEvent> = eonet
         .events

@@ -1,4 +1,4 @@
-use super::http::HTTP_CLIENT;
+use super::http::{send_with_resilience, SourceClass, HTTP_CLIENT};
 use crate::models::earthquake::{Earthquake, UsgsResponse};
 
 pub async fn fetch_historical_earthquakes(
@@ -6,21 +6,28 @@ pub async fn fetch_historical_earthquakes(
     end: &str,
     min_mag: f64,
 ) -> Result<Vec<Earthquake>, String> {
-    let url = format!(
-        "https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime={}&endtime={}&minmagnitude={}",
-        start, end, min_mag
-    );
-
-    let response = HTTP_CLIENT
-        .get(&url)
-        .send()
-        .await
-        .map_err(|e| format!("Failed to fetch historical earthquakes: {}", e))?;
+    let min_mag_s = min_mag.to_string();
+    let response = send_with_resilience(
+        "historical",
+        SourceClass::OnDemand,
+        "Historical earthquake request",
+        || {
+            HTTP_CLIENT
+                .get("https://earthquake.usgs.gov/fdsnws/event/1/query")
+                .query(&[
+                    ("format", "geojson"),
+                    ("starttime", start),
+                    ("endtime", end),
+                    ("minmagnitude", min_mag_s.as_str()),
+                ])
+        },
+    )
+    .await?;
 
     let usgs: UsgsResponse = response
         .json()
         .await
-        .map_err(|e| format!("Failed to parse historical data: {}", e))?;
+        .map_err(|_| "Failed to parse historical earthquake data".to_string())?;
 
     let earthquakes: Vec<Earthquake> = usgs
         .features

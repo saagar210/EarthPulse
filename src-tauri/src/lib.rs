@@ -17,6 +17,7 @@ use tauri::{Emitter, Manager};
 struct SourceHealthEvent {
     source: &'static str,
     ok: bool,
+    degraded: bool,
     timestamp_ms: i64,
     error: Option<String>,
 }
@@ -27,9 +28,28 @@ fn emit_source_health(
     ok: bool,
     error: Option<String>,
 ) {
+    emit_source_health_with_mode(handle, source, ok, false, error);
+}
+
+fn emit_source_health_degraded(
+    handle: &tauri::AppHandle,
+    source: &'static str,
+    error: Option<String>,
+) {
+    emit_source_health_with_mode(handle, source, true, true, error);
+}
+
+fn emit_source_health_with_mode(
+    handle: &tauri::AppHandle,
+    source: &'static str,
+    ok: bool,
+    degraded: bool,
+    error: Option<String>,
+) {
     let payload = SourceHealthEvent {
         source,
         ok,
+        degraded,
         timestamp_ms: chrono::Utc::now().timestamp_millis(),
         error,
     };
@@ -196,12 +216,52 @@ pub fn run() {
                 }
             });
 
-            // Emit volcano data once at startup
+            // Background: volcano updates (every 6h, dynamic feed with curated fallback)
             let handle = app.handle().clone();
+            let volc_tracker = Arc::clone(&tracker);
             tauri::async_runtime::spawn(async move {
-                let volcanoes = fetchers::volcano::get_active_volcanoes();
-                handle.emit("volcanoes:update", &volcanoes).ok();
-                emit_source_health(&handle, "volcanoes", true, None);
+                loop {
+                    match fetchers::volcano::get_active_volcanoes().await {
+                        Ok(volcanoes) if !volcanoes.is_empty() => {
+                            let settings = handle.state::<Database>().get_settings();
+                            if settings.notify_volcanoes.unwrap_or(true) {
+                                notifications::check_volcano_notifications(
+                                    &handle,
+                                    &volc_tracker,
+                                    &volcanoes,
+                                );
+                            }
+                            handle.emit("volcanoes:update", &volcanoes).ok();
+                            emit_source_health(&handle, "volcanoes", true, None);
+                            log::info!("Fetched {} live volcano updates", volcanoes.len());
+                        }
+                        Ok(_) => {
+                            let fallback = fetchers::volcano::fallback_volcanoes();
+                            handle.emit("volcanoes:update", &fallback).ok();
+                            emit_source_health_degraded(
+                                &handle,
+                                "volcanoes",
+                                Some("Live feed empty; showing curated fallback data".to_string()),
+                            );
+                            log::warn!("Volcano feed returned no entries; using fallback list");
+                        }
+                        Err(e) => {
+                            let fallback = fetchers::volcano::fallback_volcanoes();
+                            handle.emit("volcanoes:update", &fallback).ok();
+                            emit_source_health_degraded(
+                                &handle,
+                                "volcanoes",
+                                Some(format!(
+                                    "Live feed unavailable; showing curated fallback data ({})",
+                                    e
+                                )),
+                            );
+                            log::warn!("Volcano feed unavailable: {}; using fallback list", e);
+                        }
+                    }
+
+                    tokio::time::sleep(Duration::from_secs(21600)).await;
+                }
             });
 
             // Emit meteor shower data once at startup

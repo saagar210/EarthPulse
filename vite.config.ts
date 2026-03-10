@@ -23,4 +23,18 @@ export default defineConfig({
       },
     },
   },
+  test: {
+    environment: "jsdom",
+    globals: true,
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx", "tests/contracts/**/*.test.ts"],
+    exclude: ["tests/playwright/**"],
+    setupFiles: ["./src/test/setup.ts"],
+    css: true,
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "json-summary", "lcov"],
+      include: ["src/stores/**/*.ts", "src/hooks/**/*.ts", "src/components/**/*.tsx"],
+      exclude: ["src/main.tsx", "src/test/**"],
+    },
+  },
 });

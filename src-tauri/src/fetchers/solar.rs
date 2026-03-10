@@ -1,19 +1,18 @@
-use super::http::HTTP_CLIENT;
+use super::http::{send_with_resilience, SourceClass, HTTP_CLIENT};
 use crate::models::solar::SolarData;
 
 const KP_URL: &str = "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json";
 
 pub async fn fetch_kp_index() -> Result<SolarData, String> {
-    let response = HTTP_CLIENT
-        .get(KP_URL)
-        .send()
-        .await
-        .map_err(|e| format!("Failed to fetch Kp index: {}", e))?;
+    let response = send_with_resilience("solar", SourceClass::Standard, "Solar Kp request", || {
+        HTTP_CLIENT.get(KP_URL)
+    })
+    .await?;
 
     let data: Vec<Vec<String>> = response
         .json()
         .await
-        .map_err(|e| format!("Failed to parse Kp data: {}", e))?;
+        .map_err(|_| "Failed to parse Kp data".to_string())?;
 
     // Data format: first row is header, rest are [time_tag, Kp, a_running, station_count]
     // Need at least 2 rows (header + 1 data row)

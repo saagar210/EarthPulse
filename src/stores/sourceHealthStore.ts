@@ -3,6 +3,7 @@ import { create } from "zustand";
 export interface SourceHealthEvent {
   source: string;
   ok: boolean;
+  degraded?: boolean;
   timestamp_ms: number;
   error?: string | null;
 }
@@ -13,6 +14,8 @@ interface SourceHealthState {
   lastSuccessAt: number | null;
   lastFailureAt: number | null;
   consecutiveFailures: number;
+  degraded: boolean;
+  degradedSince: number | null;
   lastError: string | null;
 }
 
@@ -26,13 +29,24 @@ export const useSourceHealthStore = create<StoreState>((set) => ({
   upsertEvent: (event) =>
     set((state) => {
       const prev = state.bySource[event.source];
+      const isDegraded = event.ok && (event.degraded ?? false);
       const next: SourceHealthState = {
         source: event.source,
         ok: event.ok,
         lastSuccessAt: event.ok ? event.timestamp_ms : prev?.lastSuccessAt ?? null,
         lastFailureAt: event.ok ? prev?.lastFailureAt ?? null : event.timestamp_ms,
         consecutiveFailures: event.ok ? 0 : (prev?.consecutiveFailures ?? 0) + 1,
-        lastError: event.ok ? null : event.error ?? "Unknown error",
+        degraded: isDegraded,
+        degradedSince: isDegraded
+          ? prev?.degraded
+            ? prev.degradedSince ?? event.timestamp_ms
+            : event.timestamp_ms
+          : null,
+        lastError: event.ok
+          ? isDegraded
+            ? event.error ?? prev?.lastError ?? null
+            : null
+          : event.error ?? "Unknown error",
       };
 
       return {

@@ -5,9 +5,18 @@ use crate::models::satellite::{PassPrediction, SatelliteData};
 use tauri::State;
 
 const SATELLITES: &[(&str, &str)] = &[
-    ("25544", "https://celestrak.org/NORAD/elements/gp.php?CATNR=25544&FORMAT=TLE"),
-    ("20580", "https://celestrak.org/NORAD/elements/gp.php?CATNR=20580&FORMAT=TLE"),
-    ("48274", "https://celestrak.org/NORAD/elements/gp.php?CATNR=48274&FORMAT=TLE"),
+    (
+        "25544",
+        "https://celestrak.org/NORAD/elements/gp.php?CATNR=25544&FORMAT=TLE",
+    ),
+    (
+        "20580",
+        "https://celestrak.org/NORAD/elements/gp.php?CATNR=20580&FORMAT=TLE",
+    ),
+    (
+        "48274",
+        "https://celestrak.org/NORAD/elements/gp.php?CATNR=48274&FORMAT=TLE",
+    ),
 ];
 
 async fn get_tle_cached(
@@ -53,15 +62,20 @@ pub async fn get_satellite_positions_inner(db: &Database) -> Result<SatelliteDat
                 for pair in &pairs {
                     let id = format!("sat-{}", cat_nr);
 
-                    if let Some(pos) = orbit::propagate_position(
-                        &id, &pair.name, &pair.line1, &pair.line2, now,
-                    ) {
+                    if let Some(pos) =
+                        orbit::propagate_position(&id, &pair.name, &pair.line1, &pair.line2, now)
+                    {
                         positions.push(pos);
                     }
 
                     // ~92 min orbit for LEO
                     if let Some(track) = orbit::predict_orbit_track(
-                        &id, &pair.line1, &pair.line2, &pair.name, now, 92,
+                        &id,
+                        &pair.line1,
+                        &pair.line2,
+                        &pair.name,
+                        now,
+                        92,
                     ) {
                         orbits.push(track);
                     }
@@ -87,8 +101,13 @@ pub async fn get_pass_predictions_inner(db: &Database) -> Result<Vec<PassPredict
                 for pair in &pairs {
                     let id = format!("sat-{}", cat_nr);
                     let passes = orbit::predict_passes(
-                        &id, &pair.name, &pair.line1, &pair.line2,
-                        user_lat, user_lon, 24,
+                        &id,
+                        &pair.name,
+                        &pair.line1,
+                        &pair.line2,
+                        user_lat,
+                        user_lon,
+                        24,
                     );
                     all_passes.extend(passes);
                 }

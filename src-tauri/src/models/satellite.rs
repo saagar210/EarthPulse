@@ -27,7 +27,7 @@ pub struct SatelliteData {
 pub struct PassPrediction {
     pub satellite_id: String,
     pub name: String,
-    pub start_time: i64,   // unix seconds
+    pub start_time: i64, // unix seconds
     pub end_time: i64,
     pub max_elevation: f64, // degrees
     pub start_azimuth: f64, // degrees

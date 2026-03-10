@@ -12,6 +12,10 @@ dist
 dist-ssr
 src-tauri/target
 src-tauri/gen
+.perf-results
+coverage
+playwright-report
+test-results
 *.local
 
 # Editor directories and files

@@ -1,4 +1,4 @@
-use super::http::HTTP_CLIENT;
+use super::http::{send_with_resilience, SourceClass, HTTP_CLIENT};
 use crate::models::gdacs::GdacsAlert;
 use quick_xml::events::Event;
 use quick_xml::Reader;
@@ -6,16 +6,16 @@ use quick_xml::Reader;
 const GDACS_RSS_URL: &str = "https://www.gdacs.org/xml/rss.xml";
 
 pub async fn fetch_gdacs_alerts() -> Result<Vec<GdacsAlert>, String> {
-    let response = HTTP_CLIENT
-        .get(GDACS_RSS_URL)
-        .send()
-        .await
-        .map_err(|e| format!("Failed to fetch GDACS: {}", e))?;
+    let response =
+        send_with_resilience("gdacs", SourceClass::Standard, "GDACS RSS request", || {
+            HTTP_CLIENT.get(GDACS_RSS_URL)
+        })
+        .await?;
 
     let text = response
         .text()
         .await
-        .map_err(|e| format!("Failed to read GDACS response: {}", e))?;
+        .map_err(|_| "Failed to read GDACS response".to_string())?;
 
     parse_gdacs_rss(&text)
 }
@@ -96,6 +96,21 @@ fn parse_gdacs_rss(xml: &str) -> Result<Vec<GdacsAlert>, String> {
                     _ => {}
                 }
             }
+            Ok(Event::CData(ref e)) => {
+                if !in_item {
+                    buf.clear();
+                    continue;
+                }
+                let text = String::from_utf8_lossy(e.as_ref()).to_string();
+                let text = text.trim().to_string();
+                if text.is_empty() {
+                    buf.clear();
+                    continue;
+                }
+                if current_tag == "description" {
+                    description = text;
+                }
+            }
             Ok(Event::End(ref e)) => {
                 let name = String::from_utf8_lossy(e.name().as_ref()).to_string();
                 if name == "item" && in_item {
@@ -108,8 +123,12 @@ fn parse_gdacs_rss(xml: &str) -> Result<Vec<GdacsAlert>, String> {
                         }
                         let id = if event_id.is_empty() {
                             // Use lat/lon + pub_date for uniqueness when event_id is missing
-                            let date_slug: String = pub_date.chars().filter(|c| c.is_alphanumeric()).collect();
-                            format!("gdacs-{}-{:.4}-{:.4}-{}", event_type, latitude, longitude, date_slug)
+                            let date_slug: String =
+                                pub_date.chars().filter(|c| c.is_alphanumeric()).collect();
+                            format!(
+                                "gdacs-{}-{:.4}-{:.4}-{}",
+                                event_type, latitude, longitude, date_slug
+                            )
                         } else {
                             format!("gdacs-{}-{}", event_type, event_id)
                         };
@@ -153,4 +172,37 @@ fn strip_html(s: &str) -> String {
     }
     // Collapse whitespace
     result.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_gdacs_rss;
+
+    #[test]
+    fn parses_minimal_gdacs_item() {
+        let xml = r#"
+        <rss version="2.0" xmlns:gdacs="http://www.gdacs.org" xmlns:geo="http://www.w3.org/2003/01/geo/wgs84_pos#">
+          <channel>
+            <item>
+              <title>Flood in Exampleland</title>
+              <description><![CDATA[<p>Heavy flood warning</p>]]></description>
+              <link>https://www.gdacs.org/report.aspx?eventid=123</link>
+              <pubDate>Mon, 01 Mar 2026 12:00:00 GMT</pubDate>
+              <gdacs:alertlevel>Orange</gdacs:alertlevel>
+              <gdacs:eventtype>FL</gdacs:eventtype>
+              <gdacs:country>Exampleland</gdacs:country>
+              <gdacs:eventid>123</gdacs:eventid>
+              <geo:lat>10.5</geo:lat>
+              <geo:long>20.5</geo:long>
+            </item>
+          </channel>
+        </rss>
+        "#;
+
+        let alerts = parse_gdacs_rss(xml).expect("xml should parse");
+        assert_eq!(alerts.len(), 1);
+        assert_eq!(alerts[0].alert_type, "FL");
+        assert_eq!(alerts[0].severity, "Orange");
+        assert!(alerts[0].description.contains("Heavy flood warning"));
+    }
 }

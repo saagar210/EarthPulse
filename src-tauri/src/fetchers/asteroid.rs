@@ -1,4 +1,5 @@
-use super::http::HTTP_CLIENT;
+use super::http::{send_with_resilience, SourceClass, HTTP_CLIENT};
+use super::nasa;
 use crate::models::asteroid::{Asteroid, NeoResponse};
 use chrono::Utc;
 
@@ -8,21 +9,26 @@ pub async fn fetch_asteroids() -> Result<Vec<Asteroid>, String> {
         .format("%Y-%m-%d")
         .to_string();
 
-    let url = format!(
-        "https://api.nasa.gov/neo/rest/v1/feed?start_date={}&end_date={}&api_key=DEMO_KEY",
-        today, end
-    );
-
-    let response = HTTP_CLIENT
-        .get(&url)
-        .send()
-        .await
-        .map_err(|e| format!("Failed to fetch asteroids: {}", e))?;
+    let response = send_with_resilience(
+        "asteroids",
+        SourceClass::Bulk,
+        "Asteroid feed request",
+        || {
+            HTTP_CLIENT
+                .get("https://api.nasa.gov/neo/rest/v1/feed")
+                .query(&[
+                    ("start_date", today.as_str()),
+                    ("end_date", end.as_str()),
+                    ("api_key", nasa::api_key()),
+                ])
+        },
+    )
+    .await?;
 
     let neo: NeoResponse = response
         .json()
         .await
-        .map_err(|e| format!("Failed to parse asteroid data: {}", e))?;
+        .map_err(|_| "Failed to parse asteroid data from NASA NEO API".to_string())?;
 
     let mut asteroids: Vec<Asteroid> = neo
         .near_earth_objects

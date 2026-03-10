@@ -1,0 +1,108 @@
+name: release-promote
+
+on:
+  workflow_dispatch:
+    inputs:
+      rc_tag:
+        description: "Existing RC tag (vX.Y.Z-rc.N)"
+        required: true
+        type: string
+      stable_tag:
+        description: "Target stable tag (vX.Y.Z)"
+        required: true
+        type: string
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
+
+      - name: Validate input tags
+        run: |
+          RC="${{ inputs.rc_tag }}"
+          STABLE="${{ inputs.stable_tag }}"
+
+          echo "$RC" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+$'
+          echo "$STABLE" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'
+
+          RC_BASE="${RC%-rc.*}"
+          if [ "$RC_BASE" != "$STABLE" ]; then
+            echo "Stable tag must match RC base version."
+            echo "rc_tag=$RC stable_tag=$STABLE"
+            exit 1
+          fi
+
+      - name: Verify tag preconditions
+        run: |
+          RC="${{ inputs.rc_tag }}"
+          STABLE="${{ inputs.stable_tag }}"
+
+          git fetch --tags --force
+          git rev-parse -q --verify "${RC}^{commit}" > /dev/null
+
+          if git rev-parse -q --verify "${STABLE}^{commit}" > /dev/null; then
+            echo "Stable tag already exists: ${STABLE}"
+            exit 1
+          fi
+
+      - name: Promote RC tag to stable tag
+        run: |
+          RC="${{ inputs.rc_tag }}"
+          STABLE="${{ inputs.stable_tag }}"
+
+          RC_COMMIT="$(git rev-list -n 1 "$RC")"
+          git tag "$STABLE" "$RC_COMMIT"
+          git push origin "$STABLE"
+
+      - name: Trigger stable release workflow dispatch (fallback)
+        id: dispatch
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
+        env:
+          STABLE_TAG: ${{ inputs.stable_tag }}
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const stableTag = process.env.STABLE_TAG;
+            const workflowId = "release-matrix.yml";
+
+            await new Promise((resolve) => setTimeout(resolve, 5000));
+
+            const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
+              owner,
+              repo,
+              workflow_id: workflowId,
+              event: "push",
+              per_page: 100
+            });
+
+            const alreadyTriggeredByTagPush = runs.some((run) => run.head_branch === stableTag);
+            core.info(`Push-triggered run found for ${stableTag}: ${alreadyTriggeredByTagPush}`);
+
+            if (!alreadyTriggeredByTagPush) {
+              await github.rest.actions.createWorkflowDispatch({
+                owner,
+                repo,
+                workflow_id: workflowId,
+                ref: context.payload.repository.default_branch,
+                inputs: {
+                  tag: stableTag
+                }
+              });
+              core.setOutput("result", "dispatched");
+            } else {
+              core.setOutput("result", "skipped");
+            }
+
+      - name: Summary
+        run: |
+          echo "## RC Promotion Complete" >> "$GITHUB_STEP_SUMMARY"
+          echo "- RC tag: \`${{ inputs.rc_tag }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Stable tag: \`${{ inputs.stable_tag }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Stable dispatch fallback: \`${{ steps.dispatch.outputs.result }}\`" >> "$GITHUB_STEP_SUMMARY"

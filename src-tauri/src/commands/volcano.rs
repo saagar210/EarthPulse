@@ -1,6 +1,13 @@
-use crate::fetchers::volcano::get_active_volcanoes;
+use crate::fetchers::volcano::{fallback_volcanoes, get_active_volcanoes};
 
 #[tauri::command]
-pub fn get_volcanoes() -> Vec<crate::models::volcano::Volcano> {
-    get_active_volcanoes()
+pub async fn get_volcanoes() -> Vec<crate::models::volcano::Volcano> {
+    match get_active_volcanoes().await {
+        Ok(volcanoes) if !volcanoes.is_empty() => volcanoes,
+        Ok(_) => fallback_volcanoes(),
+        Err(e) => {
+            log::warn!("Volcano feed unavailable, using fallback list: {}", e);
+            fallback_volcanoes()
+        }
+    }
 }

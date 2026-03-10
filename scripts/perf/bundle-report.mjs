@@ -45,10 +45,23 @@ function viteBundle() {
 
 const run = async () => {
   const report = nextBundle() || (await viteBundle()) || { source: "none", totalBytes: 0 };
+  if (report.source === "none") {
+    throw new Error("No build artifacts found. Run a build before generating bundle metrics.");
+  }
+  const capturedBy = process.env.GITHUB_ACTIONS === "true" ? "ci" : "local";
   mkdirSync(".perf-results", { recursive: true });
   writeFileSync(
     ".perf-results/bundle.json",
-    JSON.stringify({ ...report, capturedAt: new Date().toISOString() }, null, 2),
+    JSON.stringify(
+      {
+        ...report,
+        capturedAt: new Date().toISOString(),
+        capturedBy,
+        runner: process.env.RUNNER_NAME ?? "unknown",
+      },
+      null,
+      2,
+    ),
   );
 };
 

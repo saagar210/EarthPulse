@@ -20,7 +20,7 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self' ipc: http://ipc.localhost; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: asset: http://asset.localhost https:; connect-src 'self' ipc: http://ipc.localhost http://api.open-notify.org https://*.basemaps.cartocdn.com https://server.arcgisonline.com https://*.tile.opentopomap.org https://earthquake.usgs.gov https://services.swpc.noaa.gov https://volcano.si.edu https://www.gdacs.org https://eonet.gsfc.nasa.gov https://api.nasa.gov https://celestrak.org https://air-quality-api.open-meteo.com https://api.open-meteo.com https://coastwatch.noaa.gov; font-src 'self' data:; media-src 'self' blob:;"
     }
   },
   "plugins": {},

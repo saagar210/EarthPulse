@@ -1,4 +1,4 @@
-use super::http::HTTP_CLIENT;
+use super::http::{send_with_resilience, SourceClass, HTTP_CLIENT};
 use crate::models::weather::{OpenMeteoResponse, Weather};
 
 fn wmo_description(code: u32) -> &'static str {
@@ -40,21 +40,29 @@ pub async fn fetch_weather(lat: f64, lon: f64) -> Result<Weather, String> {
         return Err("Invalid coordinates".into());
     }
 
-    let url = format!(
-        "https://api.open-meteo.com/v1/forecast?latitude={}&longitude={}&current=temperature_2m,weather_code,wind_speed_10m,wind_direction_10m,relative_humidity_2m",
-        lat, lon
-    );
-
-    let response = HTTP_CLIENT
-        .get(&url)
-        .send()
-        .await
-        .map_err(|e| format!("Failed to fetch weather: {}", e))?;
+    let lat_s = lat.to_string();
+    let lon_s = lon.to_string();
+    let response = send_with_resilience(
+        "weather",
+        SourceClass::OnDemand,
+        "Weather request",
+        || {
+            HTTP_CLIENT.get("https://api.open-meteo.com/v1/forecast").query(&[
+                ("latitude", lat_s.as_str()),
+                ("longitude", lon_s.as_str()),
+                (
+                    "current",
+                    "temperature_2m,weather_code,wind_speed_10m,wind_direction_10m,relative_humidity_2m",
+                ),
+            ])
+        },
+    )
+    .await?;
 
     let data: OpenMeteoResponse = response
         .json()
         .await
-        .map_err(|e| format!("Failed to parse weather data: {}", e))?;
+        .map_err(|_| "Failed to parse weather data".to_string())?;
 
     Ok(Weather {
         latitude: data.latitude,

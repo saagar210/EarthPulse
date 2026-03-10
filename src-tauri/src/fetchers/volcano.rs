@@ -1,8 +1,29 @@
+use super::http::{send_with_resilience, SourceClass, HTTP_CLIENT};
 use crate::models::volcano::Volcano;
+use quick_xml::events::Event;
+use quick_xml::Reader;
+use std::collections::BTreeMap;
 
-/// Returns a curated list of notable active volcanoes worldwide.
-/// In a future iteration, this could fetch from the Smithsonian GVP RSS feed.
-pub fn get_active_volcanoes() -> Vec<Volcano> {
+const SMITHSONIAN_WEEKLY_RSS_URL: &str = "https://volcano.si.edu/news/WeeklyVolcanoRSS.xml";
+
+pub async fn get_active_volcanoes() -> Result<Vec<Volcano>, String> {
+    let response = send_with_resilience(
+        "volcanoes",
+        SourceClass::Standard,
+        "Smithsonian volcano feed request",
+        || HTTP_CLIENT.get(SMITHSONIAN_WEEKLY_RSS_URL),
+    )
+    .await?;
+
+    let xml = response
+        .text()
+        .await
+        .map_err(|_| "Failed to read Smithsonian volcano feed".to_string())?;
+
+    parse_weekly_report_rss(&xml)
+}
+
+pub fn fallback_volcanoes() -> Vec<Volcano> {
     vec![
         Volcano {
             id: "kilauea".into(),
@@ -140,4 +161,267 @@ pub fn get_active_volcanoes() -> Vec<Volcano> {
             description: "Stratovolcano, Sulawesi, Indonesia".into(),
         },
     ]
+}
+
+fn parse_weekly_report_rss(xml: &str) -> Result<Vec<Volcano>, String> {
+    let mut reader = Reader::from_str(xml);
+    let mut buf = Vec::new();
+
+    let mut in_item = false;
+    let mut current_tag = String::new();
+
+    let mut title = String::new();
+    let mut description = String::new();
+    let mut pub_date = String::new();
+    let mut guid = String::new();
+    let mut lat: Option<f64> = None;
+    let mut lon: Option<f64> = None;
+
+    let mut by_id: BTreeMap<String, Volcano> = BTreeMap::new();
+
+    loop {
+        match reader.read_event_into(&mut buf) {
+            Ok(Event::Start(ref e)) => {
+                let name = String::from_utf8_lossy(e.name().as_ref()).to_string();
+                current_tag = name.clone();
+                if name == "item" {
+                    in_item = true;
+                    title.clear();
+                    description.clear();
+                    pub_date.clear();
+                    guid.clear();
+                    lat = None;
+                    lon = None;
+                }
+            }
+            Ok(Event::Text(ref e)) => {
+                if !in_item {
+                    buf.clear();
+                    continue;
+                }
+
+                let text = e.unescape().unwrap_or_default().to_string();
+                let trimmed = text.trim();
+                if trimmed.is_empty() {
+                    buf.clear();
+                    continue;
+                }
+
+                match current_tag.as_str() {
+                    "title" => title = trimmed.to_string(),
+                    "description" => description = trimmed.to_string(),
+                    "pubDate" => pub_date = trimmed.to_string(),
+                    "guid" => guid = trimmed.to_string(),
+                    "georss:point" => {
+                        let parts: Vec<&str> = trimmed.split_whitespace().collect();
+                        if parts.len() == 2 {
+                            lat = parts[0].parse::<f64>().ok();
+                            lon = parts[1].parse::<f64>().ok();
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            Ok(Event::CData(ref e)) => {
+                if !in_item {
+                    buf.clear();
+                    continue;
+                }
+
+                let text = String::from_utf8_lossy(e.as_ref()).to_string();
+                let trimmed = text.trim();
+                if trimmed.is_empty() {
+                    buf.clear();
+                    continue;
+                }
+
+                match current_tag.as_str() {
+                    "description" => description = trimmed.to_string(),
+                    "title" => title = trimmed.to_string(),
+                    _ => {}
+                }
+            }
+            Ok(Event::End(ref e)) => {
+                let name = String::from_utf8_lossy(e.name().as_ref()).to_string();
+                if name == "item" && in_item {
+                    in_item = false;
+
+                    let Some(latitude) = lat else {
+                        buf.clear();
+                        continue;
+                    };
+                    let Some(longitude) = lon else {
+                        buf.clear();
+                        continue;
+                    };
+                    if !latitude.is_finite() || !longitude.is_finite() {
+                        buf.clear();
+                        continue;
+                    }
+
+                    let volcano_name = parse_volcano_name(&title);
+                    let status = infer_status(&title, &description);
+                    let eruption_date = normalize_date(&pub_date);
+                    let id = infer_id(&guid, &volcano_name, &eruption_date);
+
+                    let volcano = Volcano {
+                        id: id.clone(),
+                        name: volcano_name.clone(),
+                        latitude,
+                        longitude,
+                        status: status.to_string(),
+                        last_eruption: eruption_date,
+                        description: summarize_description(&description),
+                    };
+                    by_id.insert(id, volcano);
+                }
+            }
+            Ok(Event::Eof) => break,
+            Err(e) => return Err(format!("Failed to parse Smithsonian volcano feed: {}", e)),
+            _ => {}
+        }
+        buf.clear();
+    }
+
+    let mut result: Vec<Volcano> = by_id.into_values().collect();
+    if result.is_empty() {
+        return Err("Smithsonian feed did not contain parseable volcano entries".to_string());
+    }
+    result.sort_by(|a, b| {
+        status_rank(&a.status)
+            .cmp(&status_rank(&b.status))
+            .then_with(|| a.name.cmp(&b.name))
+    });
+    Ok(result)
+}
+
+fn parse_volcano_name(title: &str) -> String {
+    let pre = title.split(" - Report for").next().unwrap_or(title).trim();
+    let name = pre.split(" (").next().unwrap_or(pre).trim();
+    if name.is_empty() {
+        "Unknown volcano".to_string()
+    } else {
+        name.to_string()
+    }
+}
+
+fn infer_status(title: &str, description: &str) -> &'static str {
+    let lower = format!("{} {}", title.to_lowercase(), description.to_lowercase());
+    if lower.contains("new eruptive activity") || lower.contains("eruption") {
+        "warning"
+    } else if lower.contains("continuing activity") || lower.contains("ash plume") {
+        "watch"
+    } else if lower.contains("decreased") || lower.contains("decline") {
+        "advisory"
+    } else {
+        "advisory"
+    }
+}
+
+fn normalize_date(pub_date: &str) -> String {
+    chrono::DateTime::parse_from_rfc2822(pub_date)
+        .map(|d| d.date_naive().to_string())
+        .unwrap_or_else(|_| pub_date.to_string())
+}
+
+fn infer_id(guid: &str, name: &str, date: &str) -> String {
+    if let Some(fragment) = guid.split('#').last() {
+        if !fragment.is_empty() && fragment != guid {
+            return fragment.to_string();
+        }
+    }
+    let slug = name
+        .to_lowercase()
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+        .collect::<String>()
+        .split('-')
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join("-");
+    format!("{}-{}", slug, date)
+}
+
+fn summarize_description(raw: &str) -> String {
+    let stripped = strip_html(raw);
+    let first_sentence = stripped
+        .split(". ")
+        .next()
+        .unwrap_or(stripped.as_str())
+        .trim()
+        .to_string();
+    if first_sentence.len() > 180 {
+        format!("{}...", &first_sentence[..177])
+    } else {
+        first_sentence
+    }
+}
+
+fn strip_html(s: &str) -> String {
+    let mut result = String::new();
+    let mut in_tag = false;
+    for c in s.chars() {
+        if c == '<' {
+            in_tag = true;
+        } else if c == '>' {
+            in_tag = false;
+        } else if !in_tag {
+            result.push(c);
+        }
+    }
+
+    result
+        .replace("&nbsp;", " ")
+        .replace("&amp;", "&")
+        .replace("&quot;", "\"")
+        .replace("&#39;", "'")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn status_rank(status: &str) -> u8 {
+    match status {
+        "warning" => 0,
+        "watch" => 1,
+        "advisory" => 2,
+        "normal" => 3,
+        _ => 4,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_weekly_report_rss;
+
+    #[test]
+    fn parses_rss_items_into_volcano_entries() {
+        let xml = r#"
+        <rss version="2.0" xmlns:georss="http://www.georss.org/georss">
+          <channel>
+            <item>
+              <title>Fuego - Report for 2026-02-25</title>
+              <description><![CDATA[<p>New eruptive activity with ash plume.</p>]]></description>
+              <pubDate>Wed, 25 Feb 2026 00:00:00 +0000</pubDate>
+              <guid>https://example.com/#fuego-2026-02-25</guid>
+              <georss:point>14.473 -90.88</georss:point>
+            </item>
+          </channel>
+        </rss>
+        "#;
+
+        let volcanoes = parse_weekly_report_rss(xml).expect("rss should parse");
+        assert_eq!(volcanoes.len(), 1);
+        assert_eq!(volcanoes[0].name, "Fuego");
+        assert_eq!(volcanoes[0].status, "warning");
+        assert_eq!(volcanoes[0].id, "fuego-2026-02-25");
+        assert_eq!(volcanoes[0].last_eruption, "2026-02-25");
+    }
+
+    #[test]
+    fn fails_when_no_parseable_entries_exist() {
+        let xml = r#"<rss version="2.0"><channel><item><title>Missing coordinates</title></item></channel></rss>"#;
+        let err = parse_weekly_report_rss(xml).expect_err("should fail without coordinates");
+        assert!(err.contains("parseable volcano entries"));
+    }
 }

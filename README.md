@@ -15,7 +15,7 @@ Built with **Tauri 2 + React 19 + Rust** for native performance and tiny bundle 
 | Satellite Tracks (ISS, Hubble, Tiangong) | CelesTrak TLE + SGP4 | 5min |
 | Day/Night Terminator | Solar calculation | 60s |
 | Aurora / Kp Index | NOAA SWPC | 15min |
-| Volcanoes | Smithsonian GVP | startup |
+| Volcanoes | Smithsonian GVP (live with curated fallback) | 6h |
 | GDACS Hazard Alerts | GDACS RSS | 15min |
 | EONET Wildfires & Storms | NASA EONET v3 | 30min |
 | Asteroid Close Approaches | NASA NEO API | 6h |
@@ -46,13 +46,21 @@ Built with **Tauri 2 + React 19 + Rust** for native performance and tiny bundle 
 ### Prerequisites
 
 - [Rust](https://rustup.rs/) (stable)
-- [Node.js](https://nodejs.org/) 18+
+- [Node.js](https://nodejs.org/) 20+
 - [pnpm](https://pnpm.io/)
+
+Environment note:
+- Local workspace path must not contain `:`.
+- Run `pnpm preflight` after install to validate environment compatibility.
+
+Optional API key:
+- Set `EARTHPULSE_NASA_API_KEY` (or `NASA_API_KEY`) to avoid `DEMO_KEY` rate limits for NASA NEO and DONKI feeds.
 
 ### Run
 
 ```bash
 pnpm install
+pnpm preflight
 pnpm tauri dev
 ```
 
@@ -72,8 +80,43 @@ Tradeoff:
 ### Build
 
 ```bash
+pnpm preflight
 pnpm tauri build
 ```
+
+### Deterministic Verification
+
+```bash
+bash .codex/scripts/run_verify_commands.sh
+```
+
+Refresh enforced perf baselines after intentionally accepted performance changes:
+
+```bash
+pnpm perf:build
+pnpm perf:bundle
+pnpm perf:baseline:capture
+```
+
+Recommendation:
+- Capture enforced build-time baselines from CI runners (not local laptops) before setting `PERF_BUILD_ENFORCED=true`.
+- Capture enforced bundle baselines from CI runners before setting `PERF_BUNDLE_ENFORCED=true`.
+
+### Test Suites
+
+```bash
+pnpm test:unit      # frontend unit + contract tests (Vitest)
+pnpm test:rust      # Rust unit + integration tests
+pnpm test:e2e       # Playwright smoke suite (mocked Tauri bridge)
+```
+
+Coverage thresholds are enforced in `vite.config.ts` for core frontend modules.
+
+### Release Docs
+
+- [Release Runbook](docs/release/RELEASE_RUNBOOK.md)
+- [RC Promotion Policy](docs/release/RC_PROMOTION.md)
+- [Rollback Drill](docs/release/ROLLBACK_DRILL.md)
 
 ### Cleanup Generated Artifacts
 

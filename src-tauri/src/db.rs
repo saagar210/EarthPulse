@@ -513,7 +513,8 @@ fn parse_bool_setting(value: &str) -> Option<bool> {
 
 #[cfg(test)]
 mod tests {
-    use super::parse_bool_setting;
+    use super::{parse_bool_setting, Database};
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
     fn parse_bool_setting_variants() {
@@ -522,5 +523,29 @@ mod tests {
         assert_eq!(parse_bool_setting("FALSE"), Some(false));
         assert_eq!(parse_bool_setting("off"), Some(false));
         assert_eq!(parse_bool_setting("maybe"), None);
+    }
+
+    #[test]
+    fn settings_roundtrip_persists_values() {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        let temp_dir = std::env::temp_dir().join(format!("earthpulse-db-test-{}", nonce));
+        std::fs::create_dir_all(&temp_dir).expect("temp dir should be created");
+
+        let db = Database::new(&temp_dir);
+        db.save_settings(12.3, 45.6, 5.5, 900.0, true, false, true, true, "llama3.3");
+        let settings = db.get_settings();
+
+        assert_eq!(settings.user_lat, Some(12.3));
+        assert_eq!(settings.user_lon, Some(45.6));
+        assert_eq!(settings.mag_threshold, Some(5.5));
+        assert_eq!(settings.proximity_km, Some(900.0));
+        assert_eq!(settings.notify_earthquakes, Some(true));
+        assert_eq!(settings.notify_aurora, Some(false));
+        assert_eq!(settings.notify_volcanoes, Some(true));
+        assert_eq!(settings.sonification_enabled, Some(true));
+        assert_eq!(settings.ollama_model.as_deref(), Some("llama3.3"));
     }
 }

@@ -1,4 +1,4 @@
-use super::http::HTTP_CLIENT;
+use super::http::{send_with_resilience, SourceClass, HTTP_CLIENT};
 use crate::models::air_quality::{AQResponse, AirQuality};
 
 fn aqi_category(aqi: u32) -> (&'static str, &'static str) {
@@ -17,21 +17,28 @@ pub async fn fetch_air_quality(lat: f64, lon: f64) -> Result<AirQuality, String>
         return Err("Invalid coordinates".into());
     }
 
-    let url = format!(
-        "https://air-quality-api.open-meteo.com/v1/air-quality?latitude={}&longitude={}&current=european_aqi,us_aqi,pm2_5,pm10",
-        lat, lon
-    );
-
-    let response = HTTP_CLIENT
-        .get(&url)
-        .send()
-        .await
-        .map_err(|e| format!("Failed to fetch air quality: {}", e))?;
+    let lat_s = lat.to_string();
+    let lon_s = lon.to_string();
+    let response = send_with_resilience(
+        "air_quality",
+        SourceClass::OnDemand,
+        "Air quality request",
+        || {
+            HTTP_CLIENT
+                .get("https://air-quality-api.open-meteo.com/v1/air-quality")
+                .query(&[
+                    ("latitude", lat_s.as_str()),
+                    ("longitude", lon_s.as_str()),
+                    ("current", "european_aqi,us_aqi,pm2_5,pm10"),
+                ])
+        },
+    )
+    .await?;
 
     let data: AQResponse = response
         .json()
         .await
-        .map_err(|e| format!("Failed to parse AQ data: {}", e))?;
+        .map_err(|_| "Failed to parse AQ data".to_string())?;
 
     let aqi = data
         .current

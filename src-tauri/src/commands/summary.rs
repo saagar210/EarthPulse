@@ -69,20 +69,20 @@ pub async fn generate_summary(db: State<'_, Database>, model: String) -> Result<
             if e.is_connect() {
                 "Ollama is not running. Start it with 'ollama serve' and ensure a model is installed (e.g., 'ollama pull llama3.2').".to_string()
             } else {
-                format!("Ollama request failed: {}", e)
+                format!("Ollama request failed: {e}")
             }
         })?;
 
     if !response.status().is_success() {
         let status = response.status();
         let text = response.text().await.unwrap_or_default();
-        return Err(format!("Ollama returned {}: {}", status, text));
+        return Err(format!("Ollama returned {status}: {text}"));
     }
 
     let result: OllamaResponse = response
         .json()
         .await
-        .map_err(|e| format!("Failed to parse Ollama response: {}", e))?;
+        .map_err(|e| format!("Failed to parse Ollama response: {e}"))?;
 
     Ok(result.response)
 }

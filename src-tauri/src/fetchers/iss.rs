@@ -19,12 +19,12 @@ pub async fn fetch_iss_position() -> Result<IssPosition, String> {
         .iss_position
         .latitude
         .parse()
-        .map_err(|e| format!("Invalid latitude: {}", e))?;
+        .map_err(|e| format!("Invalid latitude: {e}"))?;
     let lon: f64 = api
         .iss_position
         .longitude
         .parse()
-        .map_err(|e| format!("Invalid longitude: {}", e))?;
+        .map_err(|e| format!("Invalid longitude: {e}"))?;
 
     if !lat.is_finite() || !lon.is_finite() {
         return Err("ISS position contains non-finite coordinates".into());

@@ -6,7 +6,7 @@ pub async fn get_volcanoes() -> Vec<crate::models::volcano::Volcano> {
         Ok(volcanoes) if !volcanoes.is_empty() => volcanoes,
         Ok(_) => fallback_volcanoes(),
         Err(e) => {
-            log::warn!("Volcano feed unavailable, using fallback list: {}", e);
+            log::warn!("Volcano feed unavailable, using fallback list: {e}");
             fallback_volcanoes()
         }
     }

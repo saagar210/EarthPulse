@@ -27,19 +27,10 @@ struct RetryPolicy {
     open_seconds: u64,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 struct CircuitState {
     consecutive_failures: u32,
     open_until: Option<Instant>,
-}
-
-impl Default for CircuitState {
-    fn default() -> Self {
-        Self {
-            consecutive_failures: 0,
-            open_until: None,
-        }
-    }
 }
 
 static CIRCUITS: LazyLock<Mutex<HashMap<&'static str, CircuitState>>> =
@@ -169,8 +160,7 @@ where
 
     if is_circuit_open(source) {
         return Err(format!(
-            "{} temporarily unavailable (circuit open after repeated failures)",
-            context
+            "{context} temporarily unavailable (circuit open after repeated failures)"
         ));
     }
 
@@ -183,7 +173,7 @@ where
         match result {
             Ok(response) => {
                 if attempt > 1 {
-                    log::warn!("{} recovered after {} attempts", source, attempt);
+                    log::warn!("{source} recovered after {attempt} attempts");
                 }
                 record_success(source);
                 return Ok(response);
@@ -194,7 +184,7 @@ where
 
                 if !retryable || attempt == policy.max_attempts {
                     record_failure(source, policy);
-                    return Err(format!("{} failed ({})", context, err_class));
+                    return Err(format!("{context} failed ({err_class})"));
                 }
 
                 let sleep_ms = exponential_backoff_ms(policy, attempt);
@@ -211,5 +201,5 @@ where
         }
     }
 
-    Err(format!("{} failed after retries", context))
+    Err(format!("{context} failed after retries"))
 }

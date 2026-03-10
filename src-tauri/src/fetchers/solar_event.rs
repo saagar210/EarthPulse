@@ -15,7 +15,7 @@ async fn fetch_donki<T: DeserializeOwned>(
         "Solar activity request",
         || {
             HTTP_CLIENT
-                .get(format!("https://api.nasa.gov/DONKI/{}", endpoint))
+                .get(format!("https://api.nasa.gov/DONKI/{endpoint}"))
                 .query(&[
                     ("startDate", start),
                     ("endDate", end),
@@ -24,12 +24,12 @@ async fn fetch_donki<T: DeserializeOwned>(
         },
     )
     .await
-    .map_err(|_| format!("Failed to fetch NASA DONKI {} data", endpoint))?;
+    .map_err(|_| format!("Failed to fetch NASA DONKI {endpoint} data"))?;
 
     response
         .json()
         .await
-        .map_err(|_| format!("Failed to parse NASA DONKI {} payload", endpoint))
+        .map_err(|_| format!("Failed to parse NASA DONKI {endpoint} payload"))
 }
 
 pub async fn fetch_solar_activity() -> Result<SolarActivity, String> {
@@ -57,7 +57,7 @@ pub async fn fetch_solar_activity() -> Result<SolarActivity, String> {
             })
             .collect(),
         Err(e) => {
-            log::warn!("{}", e);
+            log::warn!("{e}");
             vec![]
         }
     };
@@ -94,7 +94,7 @@ pub async fn fetch_solar_activity() -> Result<SolarActivity, String> {
             })
             .collect(),
         Err(e) => {
-            log::warn!("{}", e);
+            log::warn!("{e}");
             vec![]
         }
     };

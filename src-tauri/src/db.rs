@@ -87,7 +87,7 @@ impl Database {
         ) {
             Ok(s) => s,
             Err(e) => {
-                log::error!("Failed to prepare earthquake insert: {}", e);
+                log::error!("Failed to prepare earthquake insert: {e}");
                 return;
             }
         };
@@ -181,7 +181,7 @@ impl Database {
         ) {
             Ok(s) => s,
             Err(e) => {
-                log::error!("Failed to prepare ISS trail query: {}", e);
+                log::error!("Failed to prepare ISS trail query: {e}");
                 return Vec::new();
             }
         };
@@ -195,7 +195,7 @@ impl Database {
         }) {
             Ok(rows) => rows.filter_map(|r| r.ok()).collect(),
             Err(e) => {
-                log::error!("Failed to query ISS trail: {}", e);
+                log::error!("Failed to query ISS trail: {e}");
                 Vec::new()
             }
         };
@@ -216,7 +216,7 @@ impl Database {
         ) {
             Ok(s) => s,
             Err(e) => {
-                log::error!("Failed to prepare replay query: {}", e);
+                log::error!("Failed to prepare replay query: {e}");
                 return Vec::new();
             }
         };
@@ -236,7 +236,7 @@ impl Database {
         }) {
             Ok(rows) => rows.filter_map(|r| r.ok()).collect(),
             Err(e) => {
-                log::error!("Failed to query replay data: {}", e);
+                log::error!("Failed to query replay data: {e}");
                 Vec::new()
             }
         };
@@ -281,7 +281,7 @@ impl Database {
         ) {
             Ok(s) => s,
             Err(e) => {
-                log::error!("Failed to prepare settings query: {}", e);
+                log::error!("Failed to prepare settings query: {e}");
                 return UserSettings {
                     user_lat: None,
                     user_lon: None,
@@ -313,7 +313,7 @@ impl Database {
         }) {
             Ok(r) => r,
             Err(e) => {
-                log::error!("Failed to query settings: {}", e);
+                log::error!("Failed to query settings: {e}");
                 return settings;
             }
         };
@@ -420,7 +420,7 @@ impl Database {
         ) {
             Ok(s) => s,
             Err(e) => {
-                log::error!("Failed to prepare watchlists query: {}", e);
+                log::error!("Failed to prepare watchlists query: {e}");
                 return Vec::new();
             }
         };
@@ -437,7 +437,7 @@ impl Database {
         }) {
             Ok(rows) => rows.filter_map(|r| r.ok()).collect(),
             Err(e) => {
-                log::error!("Failed to query watchlists: {}", e);
+                log::error!("Failed to query watchlists: {e}");
                 Vec::new()
             }
         };
@@ -531,7 +531,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        let temp_dir = std::env::temp_dir().join(format!("earthpulse-db-test-{}", nonce));
+        let temp_dir = std::env::temp_dir().join(format!("earthpulse-db-test-{nonce}"));
         std::fs::create_dir_all(&temp_dir).expect("temp dir should be created");
 
         let db = Database::new(&temp_dir);

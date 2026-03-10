@@ -139,7 +139,7 @@ pub fn run() {
                         }
                         Err(e) => {
                             emit_source_health(&handle, "earthquakes", false, Some(e.clone()));
-                            log::error!("Earthquake fetch error: {}", e)
+                            log::error!("Earthquake fetch error: {e}")
                         }
                     }
                     tokio::time::sleep(Duration::from_secs(60)).await;
@@ -164,7 +164,7 @@ pub fn run() {
                         }
                         Err(e) => {
                             emit_source_health(&handle, "iss", false, Some(e.clone()));
-                            log::error!("ISS fetch error: {}", e)
+                            log::error!("ISS fetch error: {e}")
                         }
                     }
                     tokio::time::sleep(Duration::from_secs(5)).await;
@@ -209,7 +209,7 @@ pub fn run() {
                         }
                         Err(e) => {
                             emit_source_health(&handle, "solar", false, Some(e.clone()));
-                            log::error!("Solar fetch error: {}", e)
+                            log::error!("Solar fetch error: {e}")
                         }
                     }
                     tokio::time::sleep(Duration::from_secs(900)).await;
@@ -252,11 +252,10 @@ pub fn run() {
                                 &handle,
                                 "volcanoes",
                                 Some(format!(
-                                    "Live feed unavailable; showing curated fallback data ({})",
-                                    e
+                                    "Live feed unavailable; showing curated fallback data ({e})"
                                 )),
                             );
-                            log::warn!("Volcano feed unavailable: {}; using fallback list", e);
+                            log::warn!("Volcano feed unavailable: {e}; using fallback list");
                         }
                     }
 
@@ -297,7 +296,7 @@ pub fn run() {
                         }
                         Err(e) => {
                             emit_source_health(&handle, "gdacs", false, Some(e.clone()));
-                            log::error!("GDACS fetch error: {}", e)
+                            log::error!("GDACS fetch error: {e}")
                         }
                     }
                     tokio::time::sleep(Duration::from_secs(900)).await;
@@ -319,7 +318,7 @@ pub fn run() {
                         }
                         Err(e) => {
                             emit_source_health(&handle, "satellites", false, Some(e.clone()));
-                            log::error!("Satellite fetch error: {}", e)
+                            log::error!("Satellite fetch error: {e}")
                         }
                     }
 
@@ -335,7 +334,7 @@ pub fn run() {
                                 .find(|p| p.satellite_id == "sat-25544" && p.start_time > now)
                             {
                                 let mins = (next.start_time - now) / 60;
-                                let text = format!("Next ISS Pass: {}min", mins);
+                                let text = format!("Next ISS Pass: {mins}min");
                                 tray::update_tray_menu(&handle, "", &text, "");
                             }
 
@@ -344,7 +343,7 @@ pub fn run() {
                         }
                         Err(e) => {
                             emit_source_health(&handle, "passes", false, Some(e.clone()));
-                            log::error!("Pass prediction error: {}", e)
+                            log::error!("Pass prediction error: {e}")
                         }
                     }
 
@@ -368,7 +367,7 @@ pub fn run() {
                         }
                         Err(e) => {
                             emit_source_health(&handle, "eonet", false, Some(e.clone()));
-                            log::error!("EONET fetch error: {}", e)
+                            log::error!("EONET fetch error: {e}")
                         }
                     }
                     tokio::time::sleep(Duration::from_secs(1800)).await;
@@ -400,7 +399,7 @@ pub fn run() {
                         }
                         Err(e) => {
                             emit_source_health(&handle, "asteroids", false, Some(e.clone()));
-                            log::error!("Asteroid fetch error: {}", e)
+                            log::error!("Asteroid fetch error: {e}")
                         }
                     }
                     tokio::time::sleep(Duration::from_secs(21600)).await;
@@ -435,7 +434,7 @@ pub fn run() {
                         }
                         Err(e) => {
                             emit_source_health(&handle, "solar_activity", false, Some(e.clone()));
-                            log::error!("Solar activity fetch error: {}", e)
+                            log::error!("Solar activity fetch error: {e}")
                         }
                     }
                     tokio::time::sleep(Duration::from_secs(10800)).await;

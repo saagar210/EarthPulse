@@ -24,7 +24,7 @@ async fn get_tle_cached(
     cat_nr: &str,
     url: &str,
 ) -> Result<Vec<tle::TlePair>, String> {
-    let cache_key = format!("tle:{}", cat_nr);
+    let cache_key = format!("tle:{cat_nr}");
 
     // Try cache (6 hour TTL)
     if let Some(cached) = db.get_cached_response(&cache_key, 21600) {
@@ -60,7 +60,7 @@ pub async fn get_satellite_positions_inner(db: &Database) -> Result<SatelliteDat
         match get_tle_cached(db, cat_nr, url).await {
             Ok(pairs) => {
                 for pair in &pairs {
-                    let id = format!("sat-{}", cat_nr);
+                    let id = format!("sat-{cat_nr}");
 
                     if let Some(pos) =
                         orbit::propagate_position(&id, &pair.name, &pair.line1, &pair.line2, now)
@@ -81,7 +81,7 @@ pub async fn get_satellite_positions_inner(db: &Database) -> Result<SatelliteDat
                     }
                 }
             }
-            Err(e) => log::warn!("Failed to get TLE for {}: {}", cat_nr, e),
+            Err(e) => log::warn!("Failed to get TLE for {cat_nr}: {e}"),
         }
     }
 
@@ -99,7 +99,7 @@ pub async fn get_pass_predictions_inner(db: &Database) -> Result<Vec<PassPredict
         match get_tle_cached(db, cat_nr, url).await {
             Ok(pairs) => {
                 for pair in &pairs {
-                    let id = format!("sat-{}", cat_nr);
+                    let id = format!("sat-{cat_nr}");
                     let passes = orbit::predict_passes(
                         &id,
                         &pair.name,
@@ -112,7 +112,7 @@ pub async fn get_pass_predictions_inner(db: &Database) -> Result<Vec<PassPredict
                     all_passes.extend(passes);
                 }
             }
-            Err(e) => log::warn!("Failed to get TLE for {}: {}", cat_nr, e),
+            Err(e) => log::warn!("Failed to get TLE for {cat_nr}: {e}"),
         }
     }
 

@@ -2,7 +2,7 @@ name: security-quality
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, edited]
+    types: [opened, synchronize, reopened]
     branches: [main, master]
 
 jobs:
@@ -26,7 +26,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    defaults:
+      run:
+        working-directory: src-tauri
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
       - run: cargo install cargo-audit --locked
-      - run: cargo audit --manifest-path src-tauri/Cargo.toml
+      - run: cargo audit

@@ -2,14 +2,14 @@ name: quality-gates
 
 on:
   pull_request:
-  push:
+    types: [opened, synchronize, reopened]
     branches: [main, master]
 
 jobs:
   quality:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           fetch-depth: 0
 
@@ -25,13 +25,13 @@ jobs:
             libsoup-3.0-dev \
             libjavascriptcoregtk-4.1-dev
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
         with:
           version: 10.30.3
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
-          node-version: 22
+          node-version: 20
           cache: pnpm
 
       - name: Install dependencies

@@ -174,12 +174,8 @@ fn tle_epoch_to_unix(elements: &Elements) -> f64 {
     let Some(date) = chrono::NaiveDate::from_ymd_opt(dt.year(), dt.month(), dt.day()) else {
         return 0.0;
     };
-    let Some(naive) = date.and_hms_nano_opt(
-        dt.hour(),
-        dt.minute(),
-        dt.second(),
-        dt.nanosecond(),
-    ) else {
+    let Some(naive) = date.and_hms_nano_opt(dt.hour(), dt.minute(), dt.second(), dt.nanosecond())
+    else {
         return 0.0;
     };
 

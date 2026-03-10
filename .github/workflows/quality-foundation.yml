@@ -35,6 +35,16 @@ jobs:
       CARGO_TARGET_DIR: /tmp/earthpulse-cargo-target
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev
       - run: rustup toolchain install 1.88.0 --profile minimal --component rustfmt --component clippy
       - run: rustup default 1.88.0
       - run: cargo fmt --check --manifest-path src-tauri/Cargo.toml

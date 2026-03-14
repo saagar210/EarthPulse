@@ -5,6 +5,13 @@
 Operational release flow for unsigned RC/stable artifacts.
 Signing and notarization are intentionally deferred to a credentialed follow-up.
 
+## Current Release Posture
+
+The current default target for this repo is **internal unsigned beta readiness**.
+
+- Internal beta ready: local launch works, deterministic verification is green, and unsigned artifacts are acceptable.
+- Distribution ready: not complete until signing/notarization secrets are provisioned and signed artifacts are validated.
+
 ## Preconditions
 
 1. `bash .codex/scripts/run_verify_commands.sh` passes locally.
@@ -29,6 +36,8 @@ Use `scripts/release/validate-tag-channel.mjs` to validate tags before push.
 ## Credential-Ready Signing Contract
 
 The release workflow now accepts optional signing and notarization credentials without requiring any workflow edits.
+
+For the exact secret names, setup commands, validation steps, and current status, use `docs/release/RELEASE_SECRETS_SETUP.md`.
 
 Add these GitHub Actions secrets when you are ready to enable signed releases:
 
@@ -56,3 +65,10 @@ If these secrets are absent, the workflow continues to produce unsigned artifact
 2. Run an RC tag through `release-matrix` and verify signed macOS artifacts.
 3. Validate updater signatures if updater artifacts are enabled later.
 4. Confirm any post-sign artifact replacement and validation steps required by distribution policy.
+
+## Companion Docs
+
+- `docs/release/RELEASE_SECRETS_SETUP.md`
+- `docs/runbooks/release-cutover.md`
+- `docs/releases/release-notes-template.md`
+- `docs/releases/release-notes-v0.1.0.md`

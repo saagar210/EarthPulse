@@ -5,6 +5,7 @@ import { useHistoricalStore } from "../stores/historicalStore";
 import { saveScreenshot, copyScreenshot } from "../utils/export";
 import { exportCSV, exportGeoJSON } from "../utils/dataExport";
 import { useEffect, useState, useRef } from "react";
+import { isBrowserPreviewMode } from "../runtime/tauri";
 
 export function Header() {
   const lastUpdate = useEarthquakeStore((s) => s.lastUpdate);
@@ -17,6 +18,7 @@ export function Header() {
   const [showExport, setShowExport] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const exportRef = useRef<HTMLDivElement>(null);
+  const isPreviewMode = isBrowserPreviewMode();
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -52,7 +54,9 @@ export function Header() {
       })()
     : null;
 
-  const handleExportAction = async (action: "save" | "copy" | "csv" | "geojson") => {
+  const handleExportAction = async (
+    action: "save" | "copy" | "csv" | "geojson",
+  ) => {
     setShowExport(false);
     try {
       if (action === "save") {
@@ -78,7 +82,11 @@ export function Header() {
           );
         } else {
           exportGeoJSON(
-            quakes as unknown as { latitude: number; longitude: number; [key: string]: unknown }[],
+            quakes as unknown as {
+              latitude: number;
+              longitude: number;
+              [key: string]: unknown;
+            }[],
             `earthpulse-earthquakes-${timestamp}.geojson`,
           );
         }
@@ -90,9 +98,7 @@ export function Header() {
 
   return (
     <header className="h-10 bg-gray-900 border-b border-gray-800 flex items-center px-4 gap-3 shrink-0">
-      <h1 className="text-sm font-bold tracking-wide text-white">
-        EarthPulse
-      </h1>
+      <h1 className="text-sm font-bold tracking-wide text-white">EarthPulse</h1>
 
       {replayLabel && (
         <span className="text-xs bg-blue-600/30 text-blue-300 px-2 py-0.5 rounded">
@@ -113,10 +119,18 @@ export function Header() {
               className={`inline-block w-2 h-2 rounded-full ${
                 loading
                   ? "bg-yellow-400 animate-pulse"
-                  : "bg-green-400 animate-[pulse_2s_ease-in-out_infinite]"
+                  : isPreviewMode
+                    ? "bg-amber-400"
+                    : "bg-green-400 animate-[pulse_2s_ease-in-out_infinite]"
               }`}
             />
-            <span>{loading ? "Updating..." : "Live"}</span>
+            <span>
+              {loading
+                ? "Updating..."
+                : isPreviewMode
+                  ? "Preview data"
+                  : "Live"}
+            </span>
             <span className="text-gray-600">|</span>
             <span>Updated {elapsed}</span>
           </>
@@ -128,12 +142,27 @@ export function Header() {
             onClick={() => setShowExport(!showExport)}
             className="ml-2 p-1 hover:bg-gray-800 rounded transition-colors"
             title="Screenshot"
+            aria-label="Export screenshot and data"
+            aria-haspopup="menu"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+              />
             </svg>
           </button>
           {showExport && (
@@ -171,6 +200,7 @@ export function Header() {
           onClick={toggleSettings}
           className="ml-2 p-1 hover:bg-gray-800 rounded transition-colors"
           title="Settings"
+          aria-label="Settings"
         >
           <svg
             className="w-4 h-4"

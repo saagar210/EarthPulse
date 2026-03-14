@@ -23,7 +23,11 @@ export function WatchlistPanel() {
       setError("Name is required");
       return;
     }
-    if (!Number.isFinite(latNum) || !Number.isFinite(lonNum) || !Number.isFinite(radiusNum)) {
+    if (
+      !Number.isFinite(latNum) ||
+      !Number.isFinite(lonNum) ||
+      !Number.isFinite(radiusNum)
+    ) {
       setError("Invalid number");
       return;
     }
@@ -64,7 +68,7 @@ export function WatchlistPanel() {
         >
           <div className="min-w-0">
             <div className="text-xs font-medium truncate">{w.name}</div>
-            <div className="text-[10px] text-gray-500">
+            <div className="text-xs text-gray-500">
               {w.latitude.toFixed(2)}, {w.longitude.toFixed(2)} &middot;{" "}
               {w.radius_km}km
             </div>
@@ -73,6 +77,7 @@ export function WatchlistPanel() {
             onClick={() => removeWatchlist(w.id)}
             className="text-gray-500 hover:text-red-400 text-xs ml-2 shrink-0"
             title="Remove"
+            aria-label={`Remove ${w.name}`}
           >
             x
           </button>
@@ -83,6 +88,7 @@ export function WatchlistPanel() {
         <input
           type="text"
           placeholder="Name"
+          aria-label="Watchlist name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs"
@@ -91,6 +97,7 @@ export function WatchlistPanel() {
           <input
             type="number"
             placeholder="Lat"
+            aria-label="Watchlist latitude"
             value={lat}
             onChange={(e) => setLat(e.target.value)}
             className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs"
@@ -98,6 +105,7 @@ export function WatchlistPanel() {
           <input
             type="number"
             placeholder="Lon"
+            aria-label="Watchlist longitude"
             value={lon}
             onChange={(e) => setLon(e.target.value)}
             className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs"
@@ -106,11 +114,12 @@ export function WatchlistPanel() {
         <input
           type="number"
           placeholder="Radius (km)"
+          aria-label="Watchlist radius"
           value={radius}
           onChange={(e) => setRadius(e.target.value)}
           className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs"
         />
-        {error && <p className="text-[10px] text-red-400">{error}</p>}
+        {error && <p className="text-xs text-red-400">{error}</p>}
         <button
           onClick={handleAdd}
           disabled={loading}

@@ -8,20 +8,20 @@ Built with **Tauri 2 + React 19 + Rust** for native performance and tiny bundle 
 
 ## What It Does
 
-| Layer | Source | Refresh |
-|-------|--------|---------|
-| Earthquakes (circle + heatmap) | USGS GeoJSON | 60s |
-| ISS Tracker + orbit trail | Open Notify | 5s |
-| Satellite Tracks (ISS, Hubble, Tiangong) | CelesTrak TLE + SGP4 | 5min |
-| Day/Night Terminator | Solar calculation | 60s |
-| Aurora / Kp Index | NOAA SWPC | 15min |
-| Volcanoes | Smithsonian GVP (live with curated fallback) | 6h |
-| GDACS Hazard Alerts | GDACS RSS | 15min |
-| EONET Wildfires & Storms | NASA EONET v3 | 30min |
-| Asteroid Close Approaches | NASA NEO API | 6h |
-| Solar Flares & CMEs | NASA DONKI | 3h |
-| Tectonic Plate Boundaries | Static GeoJSON | startup |
-| Meteor Shower Calendar | Hardcoded catalog | startup |
+| Layer                                    | Source                                       | Refresh |
+| ---------------------------------------- | -------------------------------------------- | ------- |
+| Earthquakes (circle + heatmap)           | USGS GeoJSON                                 | 60s     |
+| ISS Tracker + orbit trail                | Open Notify                                  | 5s      |
+| Satellite Tracks (ISS, Hubble, Tiangong) | CelesTrak TLE + SGP4                         | 5min    |
+| Day/Night Terminator                     | Solar calculation                            | 60s     |
+| Aurora / Kp Index                        | NOAA SWPC                                    | 15min   |
+| Volcanoes                                | Smithsonian GVP (live with curated fallback) | 6h      |
+| GDACS Hazard Alerts                      | GDACS RSS                                    | 15min   |
+| EONET Wildfires & Storms                 | NASA EONET v3                                | 30min   |
+| Asteroid Close Approaches                | NASA NEO API                                 | 6h      |
+| Solar Flares & CMEs                      | NASA DONKI                                   | 3h      |
+| Tectonic Plate Boundaries                | Static GeoJSON                               | startup |
+| Meteor Shower Calendar                   | Hardcoded catalog                            | startup |
 
 ### Extra Features
 
@@ -50,10 +50,12 @@ Built with **Tauri 2 + React 19 + Rust** for native performance and tiny bundle 
 - [pnpm](https://pnpm.io/)
 
 Environment note:
+
 - Local workspace path must not contain `:`.
 - Run `pnpm preflight` after install to validate environment compatibility.
 
 Optional API key:
+
 - Set `EARTHPULSE_NASA_API_KEY` (or `NASA_API_KEY`) to avoid `DEMO_KEY` rate limits for NASA NEO and DONKI feeds.
 
 ### Run
@@ -63,6 +65,14 @@ pnpm install
 pnpm preflight
 pnpm tauri dev
 ```
+
+Browser preview for quick UI smoke checks:
+
+```bash
+pnpm dev
+```
+
+The browser preview uses mocked desktop data so UI flows can be exercised without the Tauri bridge. Use `pnpm tauri dev` for real desktop validation.
 
 ### Lean Dev (low-disk mode)
 
@@ -74,6 +84,7 @@ pnpm dev:lean
 Lean mode keeps heavy build output in temporary directories (`CARGO_TARGET_DIR` and Vite cache) and automatically removes heavy local artifacts when the process exits.
 
 Tradeoff:
+
 - Lower persistent disk usage
 - Slower restarts, because build caches are not reused between lean sessions
 
@@ -99,6 +110,7 @@ pnpm perf:baseline:capture
 ```
 
 Recommendation:
+
 - Capture enforced build-time baselines from CI runners (not local laptops) before setting `PERF_BUILD_ENFORCED=true`.
 - Capture enforced bundle baselines from CI runners before setting `PERF_BUNDLE_ENFORCED=true`.
 
@@ -115,8 +127,16 @@ Coverage thresholds are enforced in `vite.config.ts` for core frontend modules.
 ### Release Docs
 
 - [Release Runbook](docs/release/RELEASE_RUNBOOK.md)
+- [Release Secrets Setup](docs/release/RELEASE_SECRETS_SETUP.md)
 - [RC Promotion Policy](docs/release/RC_PROMOTION.md)
 - [Rollback Drill](docs/release/ROLLBACK_DRILL.md)
+- [Release Notes Template](docs/releases/release-notes-template.md)
+- [Current Release Notes](docs/releases/release-notes-v0.1.0.md)
+- [Environment Setup](docs/onboarding/environment-setup.md)
+- [Repo Tour](docs/onboarding/repo-tour.md)
+- [Common Tasks](docs/onboarding/common-tasks.md)
+- [First 7 Days Plan](docs/onboarding/first-7-days-plan.md)
+- [System Overview](docs/architecture/system-overview.md)
 
 ### Cleanup Generated Artifacts
 
@@ -152,15 +172,15 @@ pnpm check:artifacts
 
 ## Tech Stack
 
-| | |
-|---|---|
-| **Desktop** | Tauri 2 |
-| **Frontend** | React 19, TypeScript, Tailwind CSS 4 |
-| **State** | Zustand 5 |
-| **Map** | Leaflet + react-leaflet 5 |
-| **Backend** | Rust, reqwest, rusqlite, sgp4, quick-xml |
-| **Charts** | uPlot |
-| **Audio** | Web Audio API |
+|              |                                          |
+| ------------ | ---------------------------------------- |
+| **Desktop**  | Tauri 2                                  |
+| **Frontend** | React 19, TypeScript, Tailwind CSS 4     |
+| **State**    | Zustand 5                                |
+| **Map**      | Leaflet + react-leaflet 5                |
+| **Backend**  | Rust, reqwest, rusqlite, sgp4, quick-xml |
+| **Charts**   | uPlot                                    |
+| **Audio**    | Web Audio API                            |
 
 ---
 

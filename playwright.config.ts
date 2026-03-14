@@ -10,7 +10,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
   use: {
-    baseURL: "http://127.0.0.1:1420",
+    baseURL: "http://127.0.0.1:4173",
     trace: "retain-on-failure",
   },
   projects: [
@@ -20,9 +20,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "pnpm exec vite --host 127.0.0.1 --port 1420 --strictPort",
-    url: "http://127.0.0.1:1420",
+    command: "pnpm exec vite --host 127.0.0.1 --port 4173 --strictPort",
+    url: "http://127.0.0.1:4173",
     timeout: 120_000,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
   },
 });

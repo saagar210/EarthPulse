@@ -26,8 +26,6 @@ export function SolarActivityPanel() {
   const flares = useSolarEventStore((s) => s.flares);
   const cmes = useSolarEventStore((s) => s.cmes);
 
-  if (flares.length === 0 && cmes.length === 0) return null;
-
   const earthDirected = cmes.filter((c) => c.is_earth_directed);
 
   return (
@@ -35,10 +33,15 @@ export function SolarActivityPanel() {
       <h3 className="text-xs uppercase tracking-wider text-gray-500 font-semibold">
         Solar Activity (7d)
       </h3>
+      {flares.length === 0 && cmes.length === 0 && (
+        <p className="text-xs text-gray-500">
+          No recent flare or CME data is available right now.
+        </p>
+      )}
 
       {flares.length > 0 && (
         <div className="space-y-1">
-          <div className="text-[10px] text-gray-500 uppercase">Flares</div>
+          <div className="text-xs text-gray-500 uppercase">Flares</div>
           {flares.slice(0, 5).map((f) => (
             <div
               key={f.id}
@@ -51,7 +54,7 @@ export function SolarActivityPanel() {
             </div>
           ))}
           {flares.length > 5 && (
-            <div className="text-[10px] text-gray-600 px-2">
+            <div className="text-xs text-gray-600 px-2">
               +{flares.length - 5} more
             </div>
           )}
@@ -60,8 +63,9 @@ export function SolarActivityPanel() {
 
       {cmes.length > 0 && (
         <div className="space-y-1">
-          <div className="text-[10px] text-gray-500 uppercase">
-            CMEs {earthDirected.length > 0 && (
+          <div className="text-xs text-gray-500 uppercase">
+            CMEs{" "}
+            {earthDirected.length > 0 && (
               <span className="text-red-400">
                 ({earthDirected.length} Earth-directed)
               </span>

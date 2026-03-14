@@ -8,9 +8,6 @@ function formatDistance(km: number): string {
 
 export function AsteroidPanel() {
   const asteroids = useAsteroidStore((s) => s.asteroids);
-
-  if (asteroids.length === 0) return null;
-
   const upcoming = asteroids.slice(0, 8);
 
   return (
@@ -18,6 +15,11 @@ export function AsteroidPanel() {
       <h3 className="text-xs uppercase tracking-wider text-gray-500 font-semibold">
         Near-Earth Objects (7d)
       </h3>
+      {upcoming.length === 0 && (
+        <p className="text-xs text-gray-500">
+          No upcoming close-approach data is available yet.
+        </p>
+      )}
       <div className="space-y-1 max-h-[200px] overflow-y-auto pr-1">
         {upcoming.map((a) => (
           <div
@@ -33,7 +35,7 @@ export function AsteroidPanel() {
                 {a.is_hazardous && "⚠️ "}
                 {a.name.replace(/[()]/g, "")}
               </span>
-              <span className="text-gray-500 text-[10px] shrink-0">
+              <span className="text-gray-500 text-xs shrink-0">
                 {a.approach_date}
               </span>
             </div>

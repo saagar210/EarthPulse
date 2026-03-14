@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSourceHealthStore } from "../../stores/sourceHealthStore";
+import { isBrowserPreviewMode } from "../../runtime/tauri";
 
 const sourceCadenceMs: Record<string, number> = {
   earthquakes: 60_000,
@@ -71,6 +72,7 @@ function statusMessage(
 export function SourceHealthPanel() {
   const bySource = useSourceHealthStore((s) => s.bySource);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const isPreviewMode = isBrowserPreviewMode();
 
   useEffect(() => {
     const id = setInterval(() => setNowMs(Date.now()), 30_000);
@@ -100,21 +102,34 @@ export function SourceHealthPanel() {
         Data Health
       </h3>
       {rows.length === 0 && (
-        <p className="text-xs text-gray-600">Collecting source telemetry...</p>
+        <p className="text-xs text-gray-600">
+          {isPreviewMode
+            ? "Waiting for preview telemetry..."
+            : "Collecting source telemetry..."}
+        </p>
       )}
 
       {rows.map((row) => (
-        <div key={row.source} className="bg-gray-800/50 rounded px-2 py-1.5 space-y-0.5">
+        <div
+          key={row.source}
+          className="bg-gray-800/50 rounded px-2 py-1.5 space-y-0.5"
+        >
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
-              <span className={`w-2 h-2 rounded-full ${dotClass[row.status]}`} />
-              <span className="text-xs text-gray-300 truncate">{row.source}</span>
+              <span
+                className={`w-2 h-2 rounded-full ${dotClass[row.status]}`}
+              />
+              <span className="text-xs text-gray-300 truncate">
+                {row.source}
+              </span>
             </div>
-            <span className="text-[10px] text-gray-500">{ageLabel(row.lastSuccessAt, nowMs)}</span>
+            <span className="text-xs text-gray-500">
+              {ageLabel(row.lastSuccessAt, nowMs)}
+            </span>
           </div>
 
           {row.status !== "ok" && (
-            <div className="text-[10px] text-gray-500">
+            <div className="text-xs text-gray-500">
               {statusMessage(row, nowMs)}
             </div>
           )}

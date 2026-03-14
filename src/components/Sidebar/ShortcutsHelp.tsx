@@ -27,10 +27,15 @@ export function ShortcutsHelp({ onClose }: ShortcutsHelpProps) {
       onClick={onClose}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="shortcuts-title"
         className="bg-gray-900 border border-gray-700 rounded-lg p-6 w-80 max-h-[80vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-lg font-bold mb-4">Keyboard Shortcuts</h2>
+        <h2 id="shortcuts-title" className="text-lg font-bold mb-4">
+          Keyboard Shortcuts
+        </h2>
         <div className="space-y-2">
           {shortcuts.map((s) => (
             <div key={s.key} className="flex justify-between items-center">

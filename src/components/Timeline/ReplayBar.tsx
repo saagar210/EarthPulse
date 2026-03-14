@@ -79,6 +79,7 @@ export function ReplayBar() {
         <button
           onClick={startReplay}
           className="text-xs text-gray-400 hover:text-white transition-colors"
+          aria-label="24h Replay"
         >
           24h Replay
         </button>
@@ -93,6 +94,7 @@ export function ReplayBar() {
       <button
         onClick={() => setPlaying(!isPlaying)}
         className="text-sm w-8 h-8 flex items-center justify-center hover:bg-gray-800 rounded"
+        aria-label={isPlaying ? "Pause replay" : "Play replay"}
       >
         {isPlaying ? "⏸" : "▶"}
       </button>
@@ -120,6 +122,7 @@ export function ReplayBar() {
         value={currentTime}
         onChange={(e) => setTime(Number(e.target.value))}
         className="flex-1 accent-blue-500 h-1"
+        aria-label="Replay timeline"
       />
 
       <span className="text-xs text-gray-400 w-24 text-right">

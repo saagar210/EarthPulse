@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useSettingsStore } from "../../stores/settingsStore";
 
@@ -17,6 +17,7 @@ export function SettingsPanel() {
   const [ollamaModel, setOllamaModel] = useState("llama3.2");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   // Sync local state from store whenever the panel opens
   useEffect(() => {
@@ -31,8 +32,21 @@ export function SettingsPanel() {
       setSonificationEnabled(store.sonificationEnabled);
       setOllamaModel(store.ollamaModel);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store.isOpen]);
+
+  useEffect(() => {
+    if (!store.isOpen) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !isSaving) {
+        store.toggle();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [isSaving, store]);
 
   if (!store.isOpen) return null;
 
@@ -41,9 +55,13 @@ export function SettingsPanel() {
     const parsedLat = parseFloat(lat);
     const parsedLon = parseFloat(lon);
     const sanitizedModel = ollamaModel.trim();
-    const validCoords = Number.isFinite(parsedLat) && Number.isFinite(parsedLon)
-      && parsedLat >= -90 && parsedLat <= 90
-      && parsedLon >= -180 && parsedLon <= 180;
+    const validCoords =
+      Number.isFinite(parsedLat) &&
+      Number.isFinite(parsedLon) &&
+      parsedLat >= -90 &&
+      parsedLat <= 90 &&
+      parsedLon >= -180 &&
+      parsedLon <= 180;
 
     if (!sanitizedModel) {
       setSaveError("Ollama model is required");
@@ -90,17 +108,37 @@ export function SettingsPanel() {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000]">
-      <div className="bg-gray-900 border border-gray-700 rounded-lg p-6 w-96 space-y-5 max-h-[80vh] overflow-y-auto">
-        <h2 className="text-lg font-bold">Settings</h2>
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000]"
+      onClick={() => {
+        if (!isSaving) {
+          store.toggle();
+        }
+      }}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settings-title"
+        className="bg-gray-900 border border-gray-700 rounded-lg p-6 w-96 space-y-5 max-h-[80vh] overflow-y-auto"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <h2 id="settings-title" className="text-lg font-bold">
+          Settings
+        </h2>
 
         <div className="space-y-3">
           <h3 className="text-sm font-semibold text-gray-300">Location</h3>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-gray-400 block mb-1">Latitude</label>
+              <label className="text-xs text-gray-400 block mb-1">
+                Latitude
+              </label>
               <input
+                id="settings-latitude"
                 type="number"
+                aria-label="Latitude"
                 value={lat}
                 onChange={(e) => setLat(e.target.value)}
                 step="0.0001"
@@ -108,9 +146,13 @@ export function SettingsPanel() {
               />
             </div>
             <div>
-              <label className="text-xs text-gray-400 block mb-1">Longitude</label>
+              <label className="text-xs text-gray-400 block mb-1">
+                Longitude
+              </label>
               <input
+                id="settings-longitude"
                 type="number"
+                aria-label="Longitude"
                 value={lon}
                 onChange={(e) => setLon(e.target.value)}
                 step="0.0001"
@@ -144,6 +186,7 @@ export function SettingsPanel() {
                 min={3}
                 max={8}
                 step={0.5}
+                aria-label="Global earthquake alert threshold"
                 value={magThreshold}
                 onChange={(e) => setMagThreshold(Number(e.target.value))}
                 className="w-full accent-red-500"
@@ -158,6 +201,7 @@ export function SettingsPanel() {
                 min={100}
                 max={2000}
                 step={100}
+                aria-label="Alert proximity radius"
                 value={proximityRadius}
                 onChange={(e) => setProximityRadius(Number(e.target.value))}
                 className="w-full accent-red-500"
@@ -209,9 +253,13 @@ export function SettingsPanel() {
         <div className="space-y-3">
           <h3 className="text-sm font-semibold text-gray-300">AI Summary</h3>
           <div>
-            <label className="text-xs text-gray-400 block mb-1">Ollama model</label>
+            <label className="text-xs text-gray-400 block mb-1">
+              Ollama model
+            </label>
             <input
+              id="settings-ollama-model"
               type="text"
+              aria-label="Ollama model"
               value={ollamaModel}
               onChange={(e) => setOllamaModel(e.target.value)}
               className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-sm"
@@ -222,7 +270,9 @@ export function SettingsPanel() {
 
         <div className="flex gap-2 justify-end">
           {saveError && (
-            <div className="text-xs text-red-400 mr-auto self-center">{saveError}</div>
+            <div className="text-xs text-red-400 mr-auto self-center">
+              {saveError}
+            </div>
           )}
           <button
             onClick={store.toggle}
